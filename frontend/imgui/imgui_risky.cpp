@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <frontend/imgui/imgui_log.h>
+#include <cpu/registers.h>
 
 #endif
 
@@ -93,8 +94,9 @@ void ImGui_Risky::run() {
 
 	bool done = false;
 
-	bool log_debug_window = false;
+	bool log_debug_window = true;
 	bool core_config_window = true;
+	bool cpu_reg_debug_window = false;
 	IGFD::FileDialogConfig config; config.path = ".";
 
 	// 0: RV32I, 1: RV32E, 2: RV64I
@@ -184,12 +186,21 @@ void ImGui_Risky::run() {
 			if (ImGui::BeginMenu("Debug"))
 			{
 				static bool menu_toggle_cpu_reg_window = false;
-				static bool menu_toggle_log_window = false;
+				static bool menu_toggle_log_window = true;
 				static bool menu_toggle_disassembler_window = false;
 
 				ImGui::MenuItem("CPU Registers", "", &menu_toggle_cpu_reg_window, true);
 				ImGui::MenuItem("Log", "", &menu_toggle_log_window, true);
 				ImGui::MenuItem("Disassembler", "", &menu_toggle_disassembler_window, true);
+
+				if (menu_toggle_cpu_reg_window)
+				{
+					cpu_reg_debug_window = true;
+				}
+				else
+				{
+					cpu_reg_debug_window = false;
+				}
 
 				if (menu_toggle_log_window)
 				{
@@ -221,6 +232,56 @@ void ImGui_Risky::run() {
 			ImGui::Begin("ImGui Debug");
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+			ImGui::End();
+		}
+
+		if (cpu_reg_debug_window)
+		{
+			ImGui::Begin("CPU Registers", &cpu_reg_debug_window);
+			ImGui::Text("General-Purpose Registers:");
+
+			const int numColumns = 4;
+			const float columnWidth = 150.0f;
+
+			ImGui::Columns(numColumns, nullptr, false);
+
+			for (int i = 0; i < 32; ++i)
+			{
+				ImGui::Text("%s:", cpu_register_names[i].c_str());
+				ImGui::NextColumn();
+				if (core_.contains("RV32I"))
+				{
+					ImGui::Text("0x%08X", riscv_core_32->registers[i]);
+				}
+				else if (core_.contains("RV32E"))
+				{
+					ImGui::Text("0x%08X", riscv_core_32e->registers[i]);
+				}
+				else if (core_.contains("RV64I"))
+				{
+					ImGui::Text("0x%016lX", riscv_core_64->registers[i]);
+				}
+
+				ImGui::NextColumn();
+			}
+
+			ImGui::Columns(1);
+
+			ImGui::Separator();
+
+			if (core_.contains("RV32I"))
+			{
+				ImGui::Text("Program Counter (PC): 0x%08X", riscv_core_32->pc);
+			}
+			else if (core_.contains("RV32E"))
+			{
+				ImGui::Text("Program Counter (PC): 0x%08X", riscv_core_32e->pc);
+			}
+			else if (core_.contains("RV64I"))
+			{
+				ImGui::Text("Program Counter (PC): 0x%016lX", riscv_core_64->pc);
+			}
+
 			ImGui::End();
 		}
 
@@ -339,7 +400,7 @@ void ImGui_Risky::run() {
 		}
 
 		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
-			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+			if (ImGuiFileDialog::Instance()->IsOk()) {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 

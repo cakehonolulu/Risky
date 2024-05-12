@@ -3,10 +3,13 @@
 
 #include <log/log.h>
 #include <risky.h>
+#include <cstring>
 
 template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
-		: extensions(extensions), pc(0x80000000) {}
+		: extensions(extensions), pc(0x80000000) {
+	std::memset(registers, 0, sizeof(registers));
+}
 
 template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::~RISCV() {}

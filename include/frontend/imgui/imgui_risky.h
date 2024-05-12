@@ -16,4 +16,5 @@ private:
 	std::unique_ptr<RISCV<32>> riscv_core_32;
 	std::unique_ptr<RISCV<64>> riscv_core_64;
 	std::unique_ptr<RISCV<32, true>> riscv_core_32e;
+
 };

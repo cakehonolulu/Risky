@@ -1,4 +1,5 @@
 #include <cpu/core/rv32i.h>
+#include <cstring>
 
 RV32I::RV32I(const std::vector<std::string>& extensions)
 		: RISCV<32>(extensions) {
