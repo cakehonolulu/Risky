@@ -17,6 +17,7 @@
 
 #include <frontend/imgui/imgui_log.h>
 #include <cpu/registers.h>
+#include <cpu/disassembler.h>
 
 #endif
 
@@ -97,6 +98,7 @@ void ImGui_Risky::run() {
 	bool log_debug_window = true;
 	bool core_config_window = true;
 	bool cpu_reg_debug_window = false;
+	bool disassembly_window = false;
 	IGFD::FileDialogConfig config; config.path = ".";
 
 	// 0: RV32I, 1: RV32E, 2: RV64I
@@ -211,19 +213,20 @@ void ImGui_Risky::run() {
 					log_debug_window = false;
 				}
 
+				if (menu_toggle_disassembler_window)
+				{
+					disassembly_window = true;
+				}
+				else
+				{
+					disassembly_window = false;
+				}
+
 				ImGui::EndMenu();
 			}
 
 			ImGui::EndMainMenuBar();
 		}
-
-		/*std::vector<std::string> extensions = {"M"};
-
-		RV32I riscv(extensions);
-
-		riscv.bus.load_binary("../DownloadedImage");
-
-		riscv.run();*/
 
 		{
 			static float f = 0.0f;
@@ -233,6 +236,121 @@ void ImGui_Risky::run() {
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
+		}
+
+		if (disassembly_window)
+		{
+			Disassembler disassembler;
+
+			// ImGui window title
+			ImGui::Text("Disassembler");
+
+			// Input box to jump to a specific PC value
+			static char jumpToAddressBuffer[9] = "00000000"; // Assumes 32-bit addresses
+			ImGui::InputText("Jump to PC:", jumpToAddressBuffer,
+			                 sizeof(jumpToAddressBuffer),
+			                 ImGuiInputTextFlags_CharsHexadecimal);
+
+			// Convert the input buffer to a uint32_t
+			std::uint32_t jumpToAddress =
+					std::strtoul(jumpToAddressBuffer, nullptr, 16);
+
+			// Button to jump to the specified PC value
+			if (ImGui::Button("Jump")) {
+				if (core_.contains("RV32I"))
+				{
+					riscv_core_32->pc = jumpToAddress;
+				}
+				else if (core_.contains("RV32E"))
+				{
+					riscv_core_32e->pc = jumpToAddress;
+				}
+				else if (core_.contains("RV64I"))
+				{
+					riscv_core_64->pc = jumpToAddress;
+				}
+			}
+
+			// ImGui window for disassembled code
+			ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
+
+			// Calculate the number of instructions to display based on the window size
+			int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
+
+			// Get the current PC value from the CPU
+			std::uint32_t currentPC;
+
+			if (core_.contains("RV32I"))
+			{
+				currentPC = riscv_core_32->pc;
+			}
+			else if (core_.contains("RV32E"))
+			{
+				currentPC = riscv_core_32e->pc;
+			}
+			else if (core_.contains("RV64I"))
+			{
+				currentPC = riscv_core_64->pc;
+			}
+
+			// Loop to disassemble and display instructions
+			ImGuiListClipper clipper;
+			clipper.Begin(numInstructions); // Pass the number of items
+			while (clipper.Step()) {
+				for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+					// Disassemble the instruction at the current PC
+					std::uint32_t opcode;
+					if (core_.contains("RV32I"))
+					{
+						opcode = riscv_core_32->bus.read32(currentPC);
+					}
+					else if (core_.contains("RV32E"))
+					{
+						opcode = riscv_core_32e->bus.read32(currentPC);
+					}
+					else if (core_.contains("RV64I"))
+					{
+						opcode = riscv_core_64->bus.read32(currentPC);
+					}
+
+					std::string disassembly = disassembler.Disassemble(opcode);
+
+					// Highlight the current instruction
+					bool isCurrentInstruction;
+
+					if (core_.contains("RV32I"))
+					{
+						isCurrentInstruction = (currentPC == riscv_core_32->pc);
+					}
+					else if (core_.contains("RV32E"))
+					{
+						isCurrentInstruction = (currentPC == riscv_core_32e->pc);
+					}
+					else if (core_.contains("RV64I"))
+					{
+						isCurrentInstruction = (currentPC == riscv_core_64->pc);
+					}
+
+					if (isCurrentInstruction) {
+						ImGui::PushStyleColor(ImGuiCol_Text,
+						                      ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
+					}
+
+					// Display the disassembled instruction with the current PC value
+					ImGui::Text("%08X: %s%s", currentPC, disassembly.c_str(),
+					            (isCurrentInstruction) ? " <-" : "");
+
+					// Reset text color if it was changed for highlighting
+					if (isCurrentInstruction) {
+						ImGui::PopStyleColor();
+					}
+
+					// Update the current PC for the next instruction
+					currentPC += 4;
+				}
+			}
+
+			ImGui::EndChild();
 		}
 
 		if (cpu_reg_debug_window)

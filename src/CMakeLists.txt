@@ -4,4 +4,5 @@ target_sources(risky
                 bus/bus.cpp
                 cpu/core/rv32e.cpp
                 cpu/core/rv32i.cpp
-                cpu/core/rv64i.cpp)
+                cpu/core/rv64i.cpp
+                cpu/disassembler.cpp)
