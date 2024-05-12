@@ -4,6 +4,9 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
 #include "cpu/core/rv32i.h"
+#include "ImGuiFileDialog.h"
+#include "cpu/core/rv64i.h"
+#include "cpu/core/rv32e.h"
 #include <cstdio>
 #include <SDL3/SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -26,7 +29,6 @@ void ImGui_Risky::init() {
 }
 
 void ImGui_Risky::run() {
-	// Setup SDL
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
 	{
 		printf("Error: SDL_Init(): %s\n", SDL_GetError());
@@ -35,7 +37,6 @@ void ImGui_Risky::run() {
 
 	ImGuiLogger::InitializeImGuiLogger();
 
-	// Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 	// GL ES 2.0 + GLSL 100
     const char* glsl_version = "#version 100";
@@ -88,13 +89,19 @@ void ImGui_Risky::run() {
 	ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	// Our state
-	bool show_demo_window = true;
-	bool show_another_window = false;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-	// Main loop
 	bool done = false;
+
+	bool log_debug_window = false;
+	IGFD::FileDialogConfig config; config.path = ".";
+
+	// 0: RV32I, 1: RV32E, 2: RV64I
+	int riscv_variant = 3;
+	bool has_M_extension = false;
+	bool has_A_extension = false;
+	bool nommu = true;
+
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
     // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
@@ -118,13 +125,39 @@ void ImGui_Risky::run() {
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 
-		if (ImGui::BeginMainMenuBar()) {
-			if (ImGui::BeginMenu("File")) {
-				if (ImGui::MenuItem("Open", "Ctrl+O")) {
-					// Handle open action
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				if (ImGui::MenuItem("Open Binary", ""))
+				{
+					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.cpp,.h,.hpp", config);
 				}
 				ImGui::EndMenu();
 			}
+
+			if (ImGui::BeginMenu("Debug"))
+			{
+				static bool menu_toggle_cpu_reg_window = false;
+				static bool menu_toggle_log_window = false;
+				static bool menu_toggle_disassembler_window = false;
+
+				ImGui::MenuItem("CPU Registers", "", &menu_toggle_cpu_reg_window, true);
+				ImGui::MenuItem("Log", "", &menu_toggle_log_window, true);
+				ImGui::MenuItem("Disassembler", "", &menu_toggle_disassembler_window, true);
+
+				if (menu_toggle_log_window)
+				{
+					log_debug_window = true;
+				}
+				else
+				{
+					log_debug_window = false;
+				}
+
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndMainMenuBar();
 		}
 
@@ -143,8 +176,6 @@ void ImGui_Risky::run() {
 			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
 			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-			ImGui::Checkbox("Another Window", &show_another_window);
 
 			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
@@ -156,6 +187,94 @@ void ImGui_Risky::run() {
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
+		}
+
+		{
+			ImGui::Begin("RISC-V Configuration");
+
+			ImGui::Text("Base Integer Instruction Set:");
+			ImGui::RadioButton("RV32I", &riscv_variant, 0);
+			ImGui::SameLine();
+			ImGui::RadioButton("RV32E", &riscv_variant, 1);
+			ImGui::SameLine();
+			ImGui::RadioButton("RV64I", &riscv_variant, 2);
+
+			ImGui::Text("Extensions:");
+			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
+			ImGui::SameLine();
+			ImGui::Checkbox("A (Atomic)", &has_A_extension);
+
+			ImGui::Text("MMU Emulation:");
+			ImGui::Checkbox("None (nommu)", &nommu);
+
+			if (ImGui::Button("Build Core"))
+			{
+				std::vector<std::string> extensions;
+				if (has_M_extension)
+					extensions.push_back("M");
+				if (has_A_extension)
+					extensions.push_back("A");
+
+				switch (riscv_variant)
+				{
+					// RV32I
+					case 0:
+					{
+						RV32I riscv(extensions);
+						Logger::Instance().Log("[RISCV] RV32I core built");
+						break;
+					}
+					// RV32E
+					case 1:
+					{
+						RV32E riscv(extensions);
+						Logger::Instance().Log("[RISCV] RV32E core built");
+						break;
+					}
+					// RV64I
+					case 2:
+					{
+						RV64I riscv(extensions);
+						Logger::Instance().Log("[RISCV] RV64I core built");
+						break;
+					}
+					default:
+						break;
+				}
+			}
+
+			ImGui::End();
+		}
+
+		if (log_debug_window) {
+			const auto& logMessages = ImGuiLogger::GetImGuiLogBuffer();
+
+			ImGui::Begin("Log Messages");
+
+			for (const auto& logEntry : logMessages) {
+				const std::string &message = logEntry.first;
+				LogLevel level = logEntry.second;
+
+				if (level == LogLevel::Error) {
+					ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", message.c_str());
+				} else if (level == LogLevel::Warning) {
+					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", message.c_str());
+				} else {
+					ImGui::TextUnformatted(message.c_str());
+				}
+			}
+
+			ImGui::End();
+		}
+
+		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+				//bus->load_(filePathName);
+			}
+
+			ImGuiFileDialog::Instance()->Close();
 		}
 
 		ImGui::Render();
