@@ -94,13 +94,17 @@ void ImGui_Risky::run() {
 	bool done = false;
 
 	bool log_debug_window = false;
+	bool core_config_window = true;
 	IGFD::FileDialogConfig config; config.path = ".";
 
 	// 0: RV32I, 1: RV32E, 2: RV64I
-	int riscv_variant = 3;
+	int selected_riscv_variant = 3;
+	std::string core_;
+	std::string xlen_;
 	bool has_M_extension = false;
 	bool has_A_extension = false;
 	bool nommu = true;
+	bool core_empty_alert = false;
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -125,14 +129,55 @@ void ImGui_Risky::run() {
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 
+		if (core_empty_alert) {
+			ImGui::OpenPopup("Load Binary Unavailable");
+			if (ImGui::BeginPopupModal("Load Binary Unavailable", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+				ImGui::TextWrapped("You must create a RISC-V core first before loading a binary!");
+				ImGui::Separator();
+
+				if (ImGui::Button("OK", ImVec2(120, 0))) {
+					core_empty_alert = false;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SetItemDefaultFocus();
+
+				ImGui::EndPopup();
+			}
+		}
+
 		if (ImGui::BeginMainMenuBar())
 		{
 			if (ImGui::BeginMenu("File"))
 			{
 				if (ImGui::MenuItem("Open Binary", ""))
 				{
-					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".*,.cpp,.h,.hpp", config);
+					if (core_.empty())
+					{
+						core_empty_alert = true;
+					}
+					else
+					{
+						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", config);
+					}
 				}
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Config"))
+			{
+				static bool menu_toggle_core_config_window = true;
+
+				ImGui::MenuItem("Core", "", &menu_toggle_core_config_window, true);
+
+				if (menu_toggle_core_config_window)
+				{
+					core_config_window = true;
+				}
+				else
+				{
+					core_config_window = false;
+				}
+
 				ImGui::EndMenu();
 			}
 
@@ -173,31 +218,22 @@ void ImGui_Risky::run() {
 			static float f = 0.0f;
 			static int counter = 0;
 
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-				counter++;
-			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
+			ImGui::Begin("ImGui Debug");
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
 		}
 
+		if (core_config_window)
 		{
-			ImGui::Begin("RISC-V Configuration");
+			ImGui::Begin("RISC-V Core Configuration");
 
 			ImGui::Text("Base Integer Instruction Set:");
-			ImGui::RadioButton("RV32I", &riscv_variant, 0);
+			ImGui::RadioButton("RV32I", &selected_riscv_variant, 0);
 			ImGui::SameLine();
-			ImGui::RadioButton("RV32E", &riscv_variant, 1);
+			ImGui::RadioButton("RV32E", &selected_riscv_variant, 1);
 			ImGui::SameLine();
-			ImGui::RadioButton("RV64I", &riscv_variant, 2);
+			ImGui::RadioButton("RV64I", &selected_riscv_variant, 2);
 
 			ImGui::Text("Extensions:");
 			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
@@ -207,44 +243,79 @@ void ImGui_Risky::run() {
 			ImGui::Text("MMU Emulation:");
 			ImGui::Checkbox("None (nommu)", &nommu);
 
-			if (ImGui::Button("Build Core"))
+			if (core_.empty())
 			{
-				std::vector<std::string> extensions;
-				if (has_M_extension)
-					extensions.push_back("M");
-				if (has_A_extension)
-					extensions.push_back("A");
-
-				switch (riscv_variant)
+				if (ImGui::Button("Build Core"))
 				{
-					// RV32I
-					case 0:
+					std::vector<std::string> extensions;
+					if (has_M_extension)
+						extensions.push_back("M");
+					if (has_A_extension)
+						extensions.push_back("A");
+
+
+					switch (selected_riscv_variant)
 					{
-						RV32I riscv(extensions);
-						Logger::Instance().Log("[RISCV] RV32I core built");
-						break;
+						// RV32I
+						case 0:
+						{
+							riscv_core_32 = std::make_unique<RISCV<32>>(extensions);
+							core_ = "RV32I";
+							xlen_ = "32";
+							break;
+						}
+							// RV32E
+						case 1:
+						{
+							riscv_core_32e = std::make_unique<RISCV<32, true>>(extensions);
+							core_ = "RV32E";
+							xlen_ = "32";
+							break;
+						}
+							// RV64I
+						case 2:
+						{
+							riscv_core_64 = std::make_unique<RISCV<64>>(extensions);
+							core_ = "RV64I";
+							xlen_ = "64";
+							break;
+						}
+						default:
+							break;
 					}
-					// RV32E
-					case 1:
+
+
+					Logger::Instance().Log("[RISKY] Built " + core_ + " core (XLEN: " + xlen_ + ")");
+
+					if (extensions.size() > 0)
 					{
-						RV32E riscv(extensions);
-						Logger::Instance().Log("[RISCV] RV32E core built");
-						break;
+						std::string extensionString;
+
+						for (size_t i = 0; i < extensions.size(); ++i) {
+							if (i > 0) {
+								extensionString += ", ";
+							}
+							extensionString += extensions[i];
+						}
+
+						Logger::Instance().Log("[RISKY] Extensions: " + extensionString);
 					}
-					// RV64I
-					case 2:
+					else
 					{
-						RV64I riscv(extensions);
-						Logger::Instance().Log("[RISCV] RV64I core built");
-						break;
+						Logger::Instance().Log("[RISKY] Extensions: None (Base spec)");
 					}
-					default:
-						break;
 				}
+
+			}
+			else
+			{
+				ImGui::Separator();
+				ImGui::Text("There's a core in use, reset the state to create a new one!");
 			}
 
 			ImGui::End();
 		}
+
 
 		if (log_debug_window) {
 			const auto& logMessages = ImGuiLogger::GetImGuiLogBuffer();
@@ -271,7 +342,19 @@ void ImGui_Risky::run() {
 			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
-				//bus->load_(filePathName);
+
+				if (core_.contains("RV32I"))
+				{
+					riscv_core_32->bus.load_binary(filePathName);
+				}
+				else if (core_.contains("RV32E"))
+				{
+					riscv_core_32e->bus.load_binary(filePathName);
+				}
+				else if (core_.contains("RV64I"))
+				{
+					riscv_core_64->bus.load_binary(filePathName);
+				}
 			}
 
 			ImGuiFileDialog::Instance()->Close();

@@ -18,12 +18,12 @@ void Bus::load_binary(const std::string& binary_path)
 	std::ifstream binary_file(binary_path, std::ios::binary);
 
 	if (!binary_file.is_open()) {
-		Logger::Instance().Error("Failed to open the binary file: " + binary_path);
+		Logger::Instance().Error("[BUS] Failed to open the binary file: " + binary_path);
 		Risky::exit();
 	}
 	else
 	{
-		Logger::Instance().Log("Binary file opened successfully...!");
+		Logger::Instance().Log("[BUS] Binary file opened successfully...!");
 	}
 
 	const uint32_t binary_base_addr = 0x00000000;
