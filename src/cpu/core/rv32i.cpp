@@ -52,6 +52,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 						rv32i_csrrw(opcode);
 						break;
 
+					case 0b101:
+						rv32i_csrrsi(opcode);
+						break;
+
 					default:
 						unknown_zicsr_opcode(funct3);
 						break;
@@ -132,6 +136,27 @@ void RV32I::rv32i_csrrw(std::uint32_t opcode) {
 	std::uint16_t csr = (opcode >> 20) & 0xFFF;
 	registers[rd] = csr_read(csr);
 	csr_write(csr, registers[rs1]);
+}
+
+void RV32I::rv32i_csrrsi(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint16_t csr = (opcode >> 20) & 0xFFF;
+	std::uint8_t uimm = rs1;
+
+	std::uint32_t old_csr_value = csr_read(csr);
+	std::uint32_t csr_value = old_csr_value & 0xFFFFFFFF;
+	std::uint32_t mask = (1U << 5) - 1;
+
+	if (rs1 != 0 && (uimm & mask) != 0) {
+		csr_value |= (uimm & mask);
+	}
+
+	csr_write(csr, csr_value);
+
+	if (rd != 0) {
+		registers[rd] = old_csr_value;
+	}
 }
 
 void RV32I::rv32i_fence_i(std::uint32_t opcode) {

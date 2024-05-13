@@ -26,4 +26,5 @@ private:
 
 	// SYSTEM
 	void rv32i_csrrw(std::uint32_t opcode);
+	void rv32i_csrrsi(std::uint32_t opcode);
 };

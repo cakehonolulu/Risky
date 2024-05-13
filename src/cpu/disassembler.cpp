@@ -46,14 +46,12 @@ Disassembler::Disassembler() {
 			case 0b000:
 				instruction = "addi";
 				break;
-				// Add more cases for other I-type instructions here
 			case 0b010:
 				instruction = "slti";
 				break;
 			case 0b011:
 				instruction = "sltiu";
 				break;
-				// Handle more I-type instructions as needed
 			default:
 				instruction = "UNKNOWN_IMMEDIATE_OPCODE";
 				break;
@@ -91,6 +89,9 @@ Disassembler::Disassembler() {
 			case 0b001:
 				instruction = "csrrw";
 				break;
+			case 0b101:
+				instruction = "csrrw";
+				break;
 			default:
 				instruction = "UNKNOWN_ZICSR_OPCODE";
 				break;
@@ -125,7 +126,16 @@ std::string Disassembler::Disassemble(uint32_t opcode) {
 
 std::string Disassembler::get_csr_name(std::uint16_t csr) {
 	switch (csr) {
+		case 0x105: return "stvec";
+		case 0x300: return "mstatus";
+		case 0x305: return "mtvec";
+		case 0x340: return "mscratch";
 		case 0x344: return "mip";
-		default: return "UNKNOWN_CSR";
+		case 0x3A0: return "pmpcfg0";
+		case 0x3B0: return "pmpaddr0";
+		case 0xF14: return "mhartid";
+		default:
+			Logger::Instance().Log(format("[RIKSY] disassembler: get_csr_name() -> Unknown CSR: 0x{:04X}", csr));
+			return "UNKNOWN_CSR";
 	}
 }
