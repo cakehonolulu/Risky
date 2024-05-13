@@ -18,6 +18,9 @@ private:
 	// AUIPC
 	void rv32i_auipc(std::uint32_t opcode);
 
+	// LUI
+	void rv32i_lui(std::uint32_t opcode);
+
 	// JAL
 	void rv32i_jal(std::uint32_t opcode);
 

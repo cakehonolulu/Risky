@@ -16,6 +16,7 @@
 #define SYSTEM  0b1110011
 
 #define AUIPC   0b0010111
+#define LUI     0b0110111
 #define JAL     0b1101111
 #define JALR    0b1100111
 

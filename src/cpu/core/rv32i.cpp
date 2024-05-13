@@ -18,6 +18,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 			rv32i_auipc(opcode);
 			break;
 
+		case LUI:
+			rv32i_lui(opcode);
+			break;
+
 		case MISCMEM:
 			switch (funct3) {
 				case 0b001:
@@ -134,6 +138,15 @@ void RV32I::rv32i_auipc(std::uint32_t opcode) {
 	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFFFF000) >> 12);
 
 	std::uint32_t result = pc + imm;
+
+	registers[rd] = result;
+}
+
+void RV32I::rv32i_lui(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFFFF000) >> 12);
+
+	std::uint32_t result = static_cast<std::uint32_t>(imm) << 12;
 
 	registers[rd] = result;
 }
