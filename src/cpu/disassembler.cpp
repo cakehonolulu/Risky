@@ -99,6 +99,32 @@ Disassembler::Disassembler() {
 		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], cpu_register_names[rs1], imm);
 	});
 
+	SetDisassembleFunction(BRANCH, [this](uint32_t opcode) {
+		std::uint8_t funct3 = (opcode >> 12) & 0x7;
+
+		std::string instruction;
+
+		switch (funct3) {
+			case 0b101:
+				instruction = "bge";
+				break;
+			default:
+				instruction = "UNKNOWN_BRANCH_OPCODE";
+				break;
+		}
+
+		if (instruction == "UNKNOWN_BRANCH_OPCODE") {
+			std::string unknown_branch = "UNKNOWN_BRANCH_OPCODE";
+			return unknown_branch;
+		}
+
+		std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+		std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+		std::int32_t imm = (static_cast<std::int32_t>(opcode) >> 20);
+
+		return format("{} {}, {}, {}", instruction, cpu_register_names[rs1], cpu_register_names[rs2], imm);
+	});
+
 	SetDisassembleFunction(SYSTEM, [this](uint32_t opcode) {
 		std::uint8_t rd = (opcode >> 7) & 0x1F;
 		std::uint8_t rs1 = (opcode >> 15) & 0x1F;

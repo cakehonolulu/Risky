@@ -8,6 +8,7 @@ public:
     void step();
 	void unknown_zicsr_opcode(std::uint8_t funct3);
 	void unknown_miscmem_opcode(std::uint8_t funct3);
+	void unknown_branch_opcode(std::uint8_t funct3);
 	void unknown_immediate_opcode(std::uint8_t funct3);
 	void no_ext(std::string extension);
 
@@ -32,6 +33,9 @@ private:
 
 	// OP-IMM
 	void rv32i_addi(std::uint32_t opcode);
+
+	// BRANCH
+	void rv32i_bge(std::uint32_t opcode);
 
 	// SYSTEM
 	void rv32i_csrrw(std::uint32_t opcode);

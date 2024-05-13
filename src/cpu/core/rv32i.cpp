@@ -48,6 +48,17 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 			}
 			break;
 
+		case BRANCH:
+			switch (funct3) {
+				case 0b101:
+					rv32i_bge(opcode);
+					break;
+				default:
+					unknown_branch_opcode(funct3);
+					break;
+			}
+			break;
+
 		case JAL:
 			rv32i_jal(opcode);
 			break;
@@ -124,6 +135,14 @@ void RV32I::unknown_miscmem_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_branch_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented BRANCH opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
 void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
@@ -233,4 +252,16 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 	auto imm = static_cast<std::int32_t>(static_cast<std::int32_t>(opcode) >> 20);
 
 	registers[rd] = registers[rs1] + imm;
+}
+
+void RV32I::rv32i_bge(std::uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+
+	if (static_cast<std::int32_t>(registers[rs1]) >= static_cast<std::int32_t>(registers[rs2])) {
+		pc += imm;
+	} else {
+		pc += 4;
+	}
 }
