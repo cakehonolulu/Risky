@@ -13,8 +13,7 @@ public:
 	void run() override;
 
 private:
-	std::unique_ptr<RISCV<32>> riscv_core_32;
-	std::unique_ptr<RISCV<64>> riscv_core_64;
-	std::unique_ptr<RISCV<32, true>> riscv_core_32e;
-
+	std::unique_ptr<RV32I> riscv_core_32;
+    std::unique_ptr<RV32E> riscv_core_32e;
+	std::unique_ptr<RV64I> riscv_core_64;
 };

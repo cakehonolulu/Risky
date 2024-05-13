@@ -2,23 +2,23 @@
 #include <cstdlib>
 
 Exit* Risky::exitSystem = nullptr;
+bool Risky::requested_exit = false;
+bool Risky::abort = false;
 
-void Risky::setExitSystem(Exit* exitSystem_) {
-	Risky::exitSystem = exitSystem_;
+void Risky::setExitSystem(Exit* exit_) {
+    Risky::exitSystem = exit_;
 }
 
-bool Risky::shouldExit() {
-	if (exitSystem) {
-		return exitSystem->shouldExit();
-	}
+bool Risky::requestedExit() {
+    return requested_exit;
+}
 
-	return false;
+bool Risky::aborted() {
+    return abort;
 }
 
 void Risky::exit() {
-	if (exitSystem) {
-		exitSystem->exit();
-	} else {
-		std::exit(0);
-	}
+    if (exitSystem) {
+        exitSystem->exit();
+    }
 }

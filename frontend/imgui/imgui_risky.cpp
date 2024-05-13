@@ -242,18 +242,21 @@ void ImGui_Risky::run() {
 		{
 			Disassembler disassembler;
 
-			// ImGui window title
-			ImGui::Text("Disassembler");
+			ImGui::Text("PC:");
+
+            ImGui::SameLine();
 
 			// Input box to jump to a specific PC value
 			static char jumpToAddressBuffer[9] = "00000000"; // Assumes 32-bit addresses
-			ImGui::InputText("Jump to PC:", jumpToAddressBuffer,
+			ImGui::InputText("->", jumpToAddressBuffer,
 			                 sizeof(jumpToAddressBuffer),
 			                 ImGuiInputTextFlags_CharsHexadecimal);
 
 			// Convert the input buffer to a uint32_t
 			std::uint32_t jumpToAddress =
 					std::strtoul(jumpToAddressBuffer, nullptr, 16);
+
+            ImGui::SameLine();
 
 			// Button to jump to the specified PC value
 			if (ImGui::Button("Jump")) {
@@ -270,6 +273,37 @@ void ImGui_Risky::run() {
 					riscv_core_64->pc = jumpToAddress;
 				}
 			}
+
+            ImGui::Separator();
+
+            if (Risky::aborted()) {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
+                ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+                ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
+                ImGui::PopStyleVar(2);
+            } else {
+                if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
+                    if (core_.contains("RV32I")) {
+                        riscv_core_32->run();
+                    } else if (core_.contains("RV32E")) {
+                        riscv_core_32e->run();
+                    } else if (core_.contains("RV64I")) {
+                        riscv_core_64->run();
+                    }
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Step")) {
+                if (core_.contains("RV32I")) {
+                    riscv_core_32->step();
+                } else if (core_.contains("RV32E")) {
+                    riscv_core_32e->step();
+                } else if (core_.contains("RV64I")) {
+                    riscv_core_64->step();
+                }
+            }
 
 			// ImGui window for disassembled code
 			ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
@@ -438,7 +472,7 @@ void ImGui_Risky::run() {
 						// RV32I
 						case 0:
 						{
-							riscv_core_32 = std::make_unique<RISCV<32>>(extensions);
+							riscv_core_32 = std::make_unique<RV32I>(extensions);
 							core_ = "RV32I";
 							xlen_ = "32";
 							break;
@@ -446,7 +480,7 @@ void ImGui_Risky::run() {
 							// RV32E
 						case 1:
 						{
-							riscv_core_32e = std::make_unique<RISCV<32, true>>(extensions);
+							riscv_core_32e = std::make_unique<RV32E>(extensions);
 							core_ = "RV32E";
 							xlen_ = "32";
 							break;
@@ -454,7 +488,7 @@ void ImGui_Risky::run() {
 							// RV64I
 						case 2:
 						{
-							riscv_core_64 = std::make_unique<RISCV<64>>(extensions);
+							riscv_core_64 = std::make_unique<RV64I>(extensions);
 							core_ = "RV64I";
 							xlen_ = "64";
 							break;

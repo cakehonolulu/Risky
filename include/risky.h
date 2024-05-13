@@ -30,12 +30,14 @@ using fmt::format;
 
 class Risky {
 public:
-	static void setExitSystem(Exit* exit_);
-	static bool shouldExit();
-	static void exit();
-
-	virtual void init() = 0;
-	virtual void run() = 0;
+    static void setExitSystem(Exit* exit_);
+    static bool requestedExit();
+    static bool aborted();
+    static void exit();
+    static bool requested_exit;
+    static bool abort;
+    virtual void init() = 0;
+    virtual void run() = 0;
 private:
 	static Exit* exitSystem;
 };
