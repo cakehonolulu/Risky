@@ -50,6 +50,28 @@ Disassembler::Disassembler() {
 
 		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], csr_name, cpu_register_names[rs1]);
 	});
+
+	SetDisassembleFunction(MISCMEM, [this](uint32_t opcode) {
+		std::uint8_t funct3 = (opcode >> 12) & 0x7;
+
+		std::string instruction;
+
+		switch (funct3) {
+			case 0b001:
+				instruction = "fence.i";
+				break;
+			default:
+				instruction = "UNKNOWN_MISCMEM_OPCODE";
+				break;
+		}
+
+		if (instruction == "UNKNOWN_MISCMEM_OPCODE") {
+			std::string unknown_miscmem = "UNKNOWN_MISCMEM_OPCODE";
+			return unknown_miscmem;
+		}
+
+		return instruction;
+	});
 }
 
 void Disassembler::SetDisassembleFunction(uint8_t opcode, DisassembleFunction func) {

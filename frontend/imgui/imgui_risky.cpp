@@ -113,6 +113,7 @@ void ImGui_Risky::run() {
 	bool has_M_extension = false;
 	bool has_A_extension = false;
 	bool has_Zicsr_extension = false;
+	bool has_Zifence_extension = false;
 	bool nommu = true;
     bool built_core = false;
     bool core_empty_alert = false;
@@ -533,9 +534,12 @@ void ImGui_Risky::run() {
 			ImGui::Text("Extensions:");
 			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
 			ImGui::SameLine();
+			ImGui::Checkbox("A (Atomic)", &has_A_extension);
+
+
 			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
 			ImGui::SameLine();
-			ImGui::Checkbox("A (Atomic)", &has_A_extension);
+			ImGui::Checkbox("Zifence", &has_Zifence_extension);
 
 			ImGui::Text("MMU Emulation:");
 			ImGui::Checkbox("None (nommu)", &nommu);
@@ -551,6 +555,8 @@ void ImGui_Risky::run() {
 						extensions.push_back("A");
 					if (has_Zicsr_extension)
 						extensions.push_back("Zicsr");
+					if (has_Zifence_extension)
+						extensions.push_back("Zifence");
 
 					switch (selected_riscv_variant)
 					{

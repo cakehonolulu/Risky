@@ -20,6 +20,8 @@ RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 			has_m = true;
 		} else if (ext == "Zicsr") {
 			has_zicsr = true;
+		} else if (ext == "Zifence") {
+			has_zifence = true;
 		}
 	}
 }

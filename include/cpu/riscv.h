@@ -13,6 +13,7 @@
 
 #define JAL     0b1101111
 #define SYSTEM  0b1110011
+#define MISCMEM 0b0001111
 
 template <std::uint8_t xlen, bool is_embedded = false>
 class RISCV {
@@ -78,6 +79,7 @@ public:
 	bool has_a;
 	bool has_m;
 	bool has_zicsr;
+	bool has_zifence;
 
 private:
 	std::vector<std::string> extensions;

@@ -37,6 +37,21 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
 			break;
 
+		case MISCMEM:
+			switch (funct3) {
+				case 0b001:
+					if (has_zifence) {
+						rv32i_fence_i(opcode);
+					} else {
+						no_ext("Zifence");
+					}
+					break;
+				default:
+					unknown_miscmem_opcode(funct3);
+					break;
+			}
+			break;
+
 		default:
 			unknown_opcode(opcode);
 			break;
@@ -68,6 +83,15 @@ void RV32I::unknown_zicsr_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_miscmem_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented MISC-MEM opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
 void RV32I::rv32i_jal(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 
@@ -87,4 +111,15 @@ void RV32I::rv32i_csrrw(std::uint32_t opcode) {
 	std::uint16_t csr = (opcode >> 20) & 0xFFF;
 	registers[rd] = csr_read(csr);
 	csr_write(csr, registers[rs1]);
+}
+
+void RV32I::rv32i_fence_i(uint32_t opcode) {
+	/*
+	 * TODO:
+	 * In case we have different harts, we need to implement this;
+	 * since we're currently defaulting to only using 1 hart (Hart #0),
+	 * this should have pretty much no effect considering memory
+	 * reads/writes are instant and there's no delay neither bus penalty/stall.
+	 */
+	return;
 }

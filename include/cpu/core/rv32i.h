@@ -7,6 +7,7 @@ public:
 	RV32I(const std::vector<std::string>& extensions);
     void step();
 	void unknown_zicsr_opcode(std::uint8_t funct3);
+	void unknown_miscmem_opcode(std::uint8_t funct3);
 	void no_ext(std::string extension);
 
 	// JAL
@@ -17,4 +18,6 @@ public:
 
 private:
 	void execute_opcode(std::uint32_t opcode);
+
+	void rv32i_fence_i(uint32_t opcode);
 };
