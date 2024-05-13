@@ -10,6 +10,8 @@
 
 #define EMBEDDED true
 
+#define JAL 0b1101111
+
 template <std::uint8_t xlen, bool is_embedded = false>
 class RISCV {
 public:
