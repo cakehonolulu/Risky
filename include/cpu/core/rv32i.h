@@ -8,16 +8,22 @@ public:
     void step();
 	void unknown_zicsr_opcode(std::uint8_t funct3);
 	void unknown_miscmem_opcode(std::uint8_t funct3);
+	void unknown_immediate_opcode(std::uint8_t funct3);
 	void no_ext(std::string extension);
+
+
+private:
+	void execute_opcode(std::uint32_t opcode);
+
+	// MISC-MEM
+	void rv32i_fence_i(std::uint32_t opcode);
+
+	// OP-IMM
+	void rv32i_addi(std::uint32_t opcode);
 
 	// JAL
 	void rv32i_jal(std::uint32_t opcode);
 
 	// SYSTEM
-	void rv32i_csrrw(uint32_t opcode);
-
-private:
-	void execute_opcode(std::uint32_t opcode);
-
-	void rv32i_fence_i(uint32_t opcode);
+	void rv32i_csrrw(std::uint32_t opcode);
 };

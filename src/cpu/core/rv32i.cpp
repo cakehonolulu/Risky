@@ -13,6 +13,33 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 	std::uint8_t opcode_ = opcode & 0x7F;
 	std::uint8_t funct3 = (opcode >> 12) & 0x7;
 	switch (opcode_) {
+
+		case MISCMEM:
+			switch (funct3) {
+				case 0b001:
+					if (has_zifence) {
+						rv32i_fence_i(opcode);
+					} else {
+						no_ext("Zifence");
+					}
+					break;
+				default:
+					unknown_miscmem_opcode(funct3);
+					break;
+			}
+			break;
+
+		case OPIMM:
+			switch (funct3) {
+				case 0b000:
+					rv32i_addi(opcode);
+					break;
+				default:
+					unknown_immediate_opcode(funct3);
+					break;
+			}
+			break;
+
 		case JAL:
 			rv32i_jal(opcode);
 			break;
@@ -35,21 +62,6 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 				no_ext("Zicsr");
 			}
 
-			break;
-
-		case MISCMEM:
-			switch (funct3) {
-				case 0b001:
-					if (has_zifence) {
-						rv32i_fence_i(opcode);
-					} else {
-						no_ext("Zifence");
-					}
-					break;
-				default:
-					unknown_miscmem_opcode(funct3);
-					break;
-			}
 			break;
 
 		default:
@@ -92,6 +104,15 @@ void RV32I::unknown_miscmem_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
 void RV32I::rv32i_jal(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 
@@ -113,7 +134,7 @@ void RV32I::rv32i_csrrw(std::uint32_t opcode) {
 	csr_write(csr, registers[rs1]);
 }
 
-void RV32I::rv32i_fence_i(uint32_t opcode) {
+void RV32I::rv32i_fence_i(std::uint32_t opcode) {
 	/*
 	 * TODO:
 	 * In case we have different harts, we need to implement this;
@@ -122,4 +143,12 @@ void RV32I::rv32i_fence_i(uint32_t opcode) {
 	 * reads/writes are instant and there's no delay neither bus penalty/stall.
 	 */
 	return;
+}
+
+void RV32I::rv32i_addi(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	auto imm = static_cast<std::int32_t>(static_cast<std::int32_t>(opcode) >> 20);
+
+	registers[rd] = registers[rs1] + imm;
 }

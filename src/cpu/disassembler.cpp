@@ -11,6 +11,62 @@ using format;
 #endif
 
 Disassembler::Disassembler() {
+
+	SetDisassembleFunction(MISCMEM, [this](uint32_t opcode) {
+		std::uint8_t funct3 = (opcode >> 12) & 0x7;
+
+		std::string instruction;
+
+		switch (funct3) {
+			case 0b001:
+				instruction = "fence.i";
+				break;
+			default:
+				instruction = "UNKNOWN_MISCMEM_OPCODE";
+				break;
+		}
+
+		if (instruction == "UNKNOWN_MISCMEM_OPCODE") {
+			std::string unknown_miscmem = "UNKNOWN_MISCMEM_OPCODE";
+			return unknown_miscmem;
+		}
+
+		return instruction;
+	});
+
+	SetDisassembleFunction(OPIMM, [this](uint32_t opcode) {
+		std::uint8_t rd = (opcode >> 7) & 0x1F;
+		std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+		std::uint8_t funct3 = (opcode >> 12) & 0x7;
+		int32_t imm = static_cast<int32_t>(static_cast<int32_t>(opcode) >> 20);
+
+		std::string instruction;
+
+		switch (funct3) {
+			case 0b000:
+				instruction = "addi";
+				break;
+				// Add more cases for other I-type instructions here
+			case 0b010:
+				instruction = "slti";
+				break;
+			case 0b011:
+				instruction = "sltiu";
+				break;
+				// Handle more I-type instructions as needed
+			default:
+				instruction = "UNKNOWN_IMMEDIATE_OPCODE";
+				break;
+		}
+
+		if (instruction == "UNKNOWN_IMMEDIATE_OPCODE") {
+			std::string unknown_immediate = "UNKNOWN_IMMEDIATE_OPCODE";
+			return unknown_immediate;
+		}
+
+		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], cpu_register_names[rs1], imm);
+	});
+
 	SetDisassembleFunction(JAL, [this](uint32_t opcode) {
 		// rd -> [11:7]
 		std::uint8_t rd = (opcode >> 7) & 0x1F;
@@ -49,28 +105,6 @@ Disassembler::Disassembler() {
 		}
 
 		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], csr_name, cpu_register_names[rs1]);
-	});
-
-	SetDisassembleFunction(MISCMEM, [this](uint32_t opcode) {
-		std::uint8_t funct3 = (opcode >> 12) & 0x7;
-
-		std::string instruction;
-
-		switch (funct3) {
-			case 0b001:
-				instruction = "fence.i";
-				break;
-			default:
-				instruction = "UNKNOWN_MISCMEM_OPCODE";
-				break;
-		}
-
-		if (instruction == "UNKNOWN_MISCMEM_OPCODE") {
-			std::string unknown_miscmem = "UNKNOWN_MISCMEM_OPCODE";
-			return unknown_miscmem;
-		}
-
-		return instruction;
 	});
 }
 
