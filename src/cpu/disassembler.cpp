@@ -12,6 +12,12 @@ using format;
 
 Disassembler::Disassembler() {
 
+	SetDisassembleFunction(AUIPC, [this](uint32_t opcode) {
+		std::uint8_t rd = (opcode >> 7) & 0x1F;
+		std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFFFF000) >> 12);
+		return format("auipc {}, {}", cpu_register_names[rd], imm);
+	});
+
 	SetDisassembleFunction(JAL, [this](uint32_t opcode) {
 		// rd -> [11:7]
 		std::uint8_t rd = (opcode >> 7) & 0x1F;

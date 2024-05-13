@@ -15,6 +15,7 @@
 #define OPIMM   0b0010011
 #define SYSTEM  0b1110011
 
+#define AUIPC   0b0010111
 #define JAL     0b1101111
 #define JALR    0b1100111
 
