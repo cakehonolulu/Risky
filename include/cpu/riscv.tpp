@@ -23,7 +23,8 @@ void RISCV<xlen, is_embedded>::run() {
 
 template <std::uint8_t xlen, bool is_embedded>
 void RISCV<xlen, is_embedded>::reset() {
-	// Reset method implementation
+    std::memset(registers, 0, sizeof(registers));
+    pc = 0x80000000;
 }
 
 template <std::uint8_t XLEN, bool is_embedded>
@@ -40,7 +41,7 @@ template <std::uint8_t xlen, bool is_embedded>
 void RISCV<xlen, is_embedded>::unknown_opcode(std::uint32_t opcode) {
 
 	std::ostringstream logMessage;
-	logMessage << "[RISCV] Unimplemented opcode: 0x" << format("{:04X}", opcode);
+	logMessage << "[RISKY] Unimplemented opcode: 0x" << format("{:08X}", opcode);
 
 	Logger::Instance().Error(logMessage.str());
 

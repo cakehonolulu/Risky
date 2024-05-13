@@ -1,12 +1,13 @@
 #include <risky.h>
 #include <cstdlib>
+#include <cstdint>
 
 Exit* Risky::exitSystem = nullptr;
 bool Risky::requested_exit = false;
 bool Risky::abort = false;
 
-void Risky::setExitSystem(Exit* exit_) {
-    Risky::exitSystem = exit_;
+void Risky::setExitSystem(Exit* exitSystem) {
+    Risky::exitSystem = exitSystem;
 }
 
 bool Risky::requestedExit() {
@@ -19,6 +20,6 @@ bool Risky::aborted() {
 
 void Risky::exit() {
     if (exitSystem) {
-        exitSystem->exit();
+        exitSystem->exitApplication();
     }
 }

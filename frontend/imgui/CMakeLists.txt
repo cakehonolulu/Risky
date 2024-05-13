@@ -30,7 +30,8 @@ if(USE_IMGUI_FRONTEND)
             ${IMGUI_FILE_DIALOG_SOURCES}
             main.cpp
             imgui_risky.cpp
-            imgui_log.cpp)
+            imgui_log.cpp
+            imgui_exit.cpp)
 
     # Add OpenGL, SDL2, and ImGui include files to compilation
     target_include_directories(risky PUBLIC

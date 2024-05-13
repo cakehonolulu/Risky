@@ -26,12 +26,17 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
+#include <frontend/imgui/imgui_exit.h>
+
 void ImGui_Risky::init() {
 
 }
 
 void ImGui_Risky::run() {
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
+    ImGuiExitSystem imguiExitSystem;
+    Risky::setExitSystem(&imguiExitSystem);
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
 	{
 		printf("Error: SDL_Init(): %s\n", SDL_GetError());
 		return;
@@ -108,7 +113,10 @@ void ImGui_Risky::run() {
 	bool has_M_extension = false;
 	bool has_A_extension = false;
 	bool nommu = true;
-	bool core_empty_alert = false;
+    bool built_core = false;
+    bool core_empty_alert = false;
+    bool core_invalid_alert = false;
+    bool loaded_binary = false;
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -149,23 +157,42 @@ void ImGui_Risky::run() {
 			}
 		}
 
+        if (core_invalid_alert) {
+            ImGui::OpenPopup("Invalid Core Configuration");
+            if (ImGui::BeginPopupModal("Invalid Core Configuration", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextWrapped("You must select a valid core configuration!");
+                ImGui::Separator();
+
+                if (ImGui::Button("OK", ImVec2(120, 0))) {
+                    core_invalid_alert = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SetItemDefaultFocus();
+
+                ImGui::EndPopup();
+            }
+        }
+
 		if (ImGui::BeginMainMenuBar())
 		{
-			if (ImGui::BeginMenu("File"))
-			{
-				if (ImGui::MenuItem("Open Binary", ""))
-				{
-					if (core_.empty())
-					{
-						core_empty_alert = true;
-					}
-					else
-					{
-						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", config);
-					}
-				}
-				ImGui::EndMenu();
-			}
+            if (built_core)
+            {
+                if (ImGui::BeginMenu("File"))
+                {
+                    if (ImGui::MenuItem("Open Binary", ""))
+                    {
+                        if (core_.empty())
+                        {
+                            core_empty_alert = true;
+                        }
+                        else
+                        {
+                            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", config);
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+            }
 
 			if (ImGui::BeginMenu("Config"))
 			{
@@ -191,9 +218,13 @@ void ImGui_Risky::run() {
 				static bool menu_toggle_log_window = true;
 				static bool menu_toggle_disassembler_window = false;
 
-				ImGui::MenuItem("CPU Registers", "", &menu_toggle_cpu_reg_window, true);
-				ImGui::MenuItem("Log", "", &menu_toggle_log_window, true);
-				ImGui::MenuItem("Disassembler", "", &menu_toggle_disassembler_window, true);
+                ImGui::MenuItem("Log", "", &menu_toggle_log_window, true);
+
+                if (built_core)
+                {
+                    ImGui::MenuItem("CPU Registers", "", &menu_toggle_cpu_reg_window, true);
+                    ImGui::MenuItem("Disassembler", "", &menu_toggle_disassembler_window, true);
+                }
 
 				if (menu_toggle_cpu_reg_window)
 				{
@@ -237,6 +268,30 @@ void ImGui_Risky::run() {
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
 		}
+
+        if (Risky::requestedExit()) {
+            ImGui::OpenPopup("Exception occurred");
+        }
+
+        if (ImGui::BeginPopupModal("Exception occurred", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("An error has occurred, check the log window!");
+
+            ImGui::Text("Do you want to exit the application?");
+
+            if (ImGui::Button("Yes")) {
+                std::exit(0);
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("No")) {
+                // Close the popup
+                Risky::requested_exit = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
 
 		if (disassembly_window)
 		{
@@ -295,13 +350,39 @@ void ImGui_Risky::run() {
 
             ImGui::SameLine();
 
-            if (ImGui::Button("Step")) {
-                if (core_.contains("RV32I")) {
-                    riscv_core_32->step();
-                } else if (core_.contains("RV32E")) {
-                    riscv_core_32e->step();
-                } else if (core_.contains("RV64I")) {
-                    riscv_core_64->step();
+            if (Risky::aborted()) {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
+                                    ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
+                ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+                ImGui::Button("Step");
+                ImGui::PopStyleVar(2);
+            }
+            else
+            {
+                if (ImGui::Button("Step")) {
+                    if (core_.contains("RV32I")) {
+                        riscv_core_32->step();
+                    } else if (core_.contains("RV32E")) {
+                        riscv_core_32e->step();
+                    } else if (core_.contains("RV64I")) {
+                        riscv_core_64->step();
+                    }
+                }
+            }
+
+            if (Risky::aborted()) {
+                ImGui::SameLine();
+                if (ImGui::Button("Reset")) {
+                    if (core_.contains("RV32I")) {
+                        riscv_core_32->reset();
+                        Risky::abort = false;
+                    } else if (core_.contains("RV32E")) {
+                        riscv_core_32e->reset();
+                        Risky::abort = false;
+                    } else if (core_.contains("RV64I")) {
+                        riscv_core_64->reset();
+                        Risky::abort = false;
+                    }
                 }
             }
 
@@ -466,7 +547,6 @@ void ImGui_Risky::run() {
 					if (has_A_extension)
 						extensions.push_back("A");
 
-
 					switch (selected_riscv_variant)
 					{
 						// RV32I
@@ -475,48 +555,54 @@ void ImGui_Risky::run() {
 							riscv_core_32 = std::make_unique<RV32I>(extensions);
 							core_ = "RV32I";
 							xlen_ = "32";
+                            built_core = true;
 							break;
 						}
-							// RV32E
+                        // RV32E
 						case 1:
 						{
 							riscv_core_32e = std::make_unique<RV32E>(extensions);
 							core_ = "RV32E";
 							xlen_ = "32";
+                            built_core = true;
 							break;
 						}
-							// RV64I
+                        // RV64I
 						case 2:
 						{
 							riscv_core_64 = std::make_unique<RV64I>(extensions);
 							core_ = "RV64I";
 							xlen_ = "64";
+                            built_core = true;
 							break;
 						}
 						default:
+                            core_invalid_alert = true;
 							break;
 					}
 
+                    if (built_core)
+                    {
+                        Logger::Instance().Log("[RISKY] Built " + core_ + " core (XLEN: " + xlen_ + ")");
 
-					Logger::Instance().Log("[RISKY] Built " + core_ + " core (XLEN: " + xlen_ + ")");
+                        if (extensions.size() > 0)
+                        {
+                            std::string extensionString;
 
-					if (extensions.size() > 0)
-					{
-						std::string extensionString;
+                            for (size_t i = 0; i < extensions.size(); ++i) {
+                                if (i > 0) {
+                                    extensionString += ", ";
+                                }
+                                extensionString += extensions[i];
+                            }
 
-						for (size_t i = 0; i < extensions.size(); ++i) {
-							if (i > 0) {
-								extensionString += ", ";
-							}
-							extensionString += extensions[i];
-						}
-
-						Logger::Instance().Log("[RISKY] Extensions: " + extensionString);
-					}
-					else
-					{
-						Logger::Instance().Log("[RISKY] Extensions: None (Base spec)");
-					}
+                            Logger::Instance().Log("[RISKY] Extensions: " + extensionString);
+                        }
+                        else
+                        {
+                            Logger::Instance().Log("[RISKY] Extensions: None (Base spec)");
+                        }
+                    }
 				}
 
 			}
