@@ -15,6 +15,8 @@ public:
 
 	std::string Disassemble(uint32_t opcode);
 
+	std::string get_csr_name(std::uint16_t csr);
+
 private:
 	std::unordered_map<uint8_t, DisassembleFunction> opcodeFunctions;
 };

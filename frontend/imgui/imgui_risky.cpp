@@ -112,6 +112,7 @@ void ImGui_Risky::run() {
 	std::string xlen_;
 	bool has_M_extension = false;
 	bool has_A_extension = false;
+	bool has_Zicsr_extension = false;
 	bool nommu = true;
     bool built_core = false;
     bool core_empty_alert = false;
@@ -480,7 +481,7 @@ void ImGui_Risky::run() {
 
 			for (int i = 0; i < 32; ++i)
 			{
-				ImGui::Text("%s:", cpu_register_names[i].c_str());
+				ImGui::Text("%s:", cpu_abi_register_names[i].c_str());
 				ImGui::NextColumn();
 				if (core_.contains("RV32I"))
 				{
@@ -532,6 +533,8 @@ void ImGui_Risky::run() {
 			ImGui::Text("Extensions:");
 			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
 			ImGui::SameLine();
+			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
+			ImGui::SameLine();
 			ImGui::Checkbox("A (Atomic)", &has_A_extension);
 
 			ImGui::Text("MMU Emulation:");
@@ -546,6 +549,8 @@ void ImGui_Risky::run() {
 						extensions.push_back("M");
 					if (has_A_extension)
 						extensions.push_back("A");
+					if (has_Zicsr_extension)
+						extensions.push_back("Zicsr");
 
 					switch (selected_riscv_variant)
 					{

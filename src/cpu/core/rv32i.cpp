@@ -5,12 +5,36 @@ RV32I::RV32I(const std::vector<std::string>& extensions)
 		: RISCV<32>(extensions) {
 
 	set_step_func([this] { step(); });
+
+
 }
 
 void RV32I::execute_opcode(std::uint32_t opcode) {
-	switch (opcode & 0x7F) {
+	std::uint8_t opcode_ = opcode & 0x7F;
+	std::uint8_t funct3 = (opcode >> 12) & 0x7;
+	switch (opcode_) {
 		case JAL:
 			rv32i_jal(opcode);
+			break;
+
+		case SYSTEM:
+			if (has_zicsr)
+			{
+				switch (funct3) {
+					case 0b001:
+						rv32i_csrrw(opcode);
+						break;
+
+					default:
+						unknown_zicsr_opcode(funct3);
+						break;
+				}
+			}
+			else
+			{
+				no_ext("Zicsr");
+			}
+
 			break;
 
 		default:
@@ -22,7 +46,26 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 void RV32I::step() {
 	std::uint32_t opcode = fetch_opcode();
 	execute_opcode(opcode);
+	registers[0] = 0;
 	pc += 4;
+}
+
+void RV32I::no_ext(std::string extension) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] FATAL ERROR: Called a " << extension.c_str() << " extension opcode but it's unavailable for this core!";
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
+void RV32I::unknown_zicsr_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented Zicsr opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
 }
 
 void RV32I::rv32i_jal(std::uint32_t opcode) {
@@ -36,4 +79,12 @@ void RV32I::rv32i_jal(std::uint32_t opcode) {
 	registers[rd] = pc + 4;
 
 	pc = (pc + imm);
+}
+
+void RV32I::rv32i_csrrw(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint16_t csr = (opcode >> 20) & 0xFFF;
+	registers[rd] = csr_read(csr);
+	csr_write(csr, registers[rs1]);
 }

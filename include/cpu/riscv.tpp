@@ -9,6 +9,19 @@ template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 		: extensions(extensions), pc(0x80000000) {
 	std::memset(registers, 0, sizeof(registers));
+	has_a = false;
+	has_m = false;
+	has_zicsr = false;
+
+	for (const std::string& ext : extensions) {
+		if (ext == "A") {
+			has_a = true;
+		} else if (ext == "M") {
+			has_m = true;
+		} else if (ext == "Zicsr") {
+			has_zicsr = true;
+		}
+	}
 }
 
 template <std::uint8_t xlen, bool is_embedded>
@@ -39,7 +52,6 @@ std::uint32_t RISCV<xlen, is_embedded>::fetch_opcode() {
 
 template <std::uint8_t xlen, bool is_embedded>
 void RISCV<xlen, is_embedded>::unknown_opcode(std::uint32_t opcode) {
-
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented opcode: 0x" << format("{:08X}", opcode);
 
