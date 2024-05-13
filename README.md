@@ -46,6 +46,14 @@ Execute the application, provided you use the more mature ImGui frontend; you'll
 
 Simply open a binary file containing the desired code to run and step through it.
 
+## Resources
+
+https://luplab.gitlab.io/rvcodecjs/
+
+https://github.com/riscv/riscv-isa-manual/releases/tag/20240411
+
+https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first
