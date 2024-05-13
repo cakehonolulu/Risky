@@ -48,6 +48,17 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 			}
 			break;
 
+		case STORE:
+			switch (funct3) {
+				case 0b010:
+					rv32i_sw(opcode);
+					break;
+				default:
+					unknown_store_opcode(funct3);
+					break;
+			}
+			break;
+
 		case BRANCH:
 			switch (funct3) {
 				case 0b101:
@@ -143,6 +154,16 @@ void RV32I::unknown_branch_opcode(std::uint8_t funct3) {
 
 	Risky::exit();
 }
+
+void RV32I::unknown_store_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented STORE opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
 void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
@@ -254,6 +275,7 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 	registers[rd] = registers[rs1] + imm;
 }
 
+// BRANCH
 void RV32I::rv32i_bge(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
@@ -265,3 +287,14 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 		pc += 4;
 	}
 }
+
+// STORE
+void RV32I::rv32i_sw(uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+	std::int32_t imm = (static_cast<std::int32_t>(opcode) >> 20);
+
+	uint32_t effective_address = registers[rs1] + imm;
+	bus.write32(effective_address, registers[rs2]);
+}
+

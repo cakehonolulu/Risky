@@ -13,6 +13,7 @@
 
 #define MISCMEM 0b0001111
 #define OPIMM   0b0010011
+#define STORE   0b0100011
 #define BRANCH  0b1100011
 #define SYSTEM  0b1110011
 

@@ -72,7 +72,7 @@ Disassembler::Disassembler() {
 		std::uint8_t rd = (opcode >> 7) & 0x1F;
 		std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 		std::uint8_t funct3 = (opcode >> 12) & 0x7;
-		int32_t imm = static_cast<int32_t>(static_cast<int32_t>(opcode) >> 20);
+		std::int32_t imm = static_cast<std::int32_t>(static_cast<std::int32_t>(opcode) >> 20);
 
 		std::string instruction;
 
@@ -97,6 +97,31 @@ Disassembler::Disassembler() {
 		}
 
 		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], cpu_register_names[rs1], imm);
+	});
+
+	SetDisassembleFunction(STORE, [this](uint32_t opcode) {
+		std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+		std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+		std::int32_t imm = (static_cast<std::int32_t>(opcode) >> 20);
+		std::uint8_t funct3 = (opcode >> 12) & 0x7;
+
+		std::string instruction;
+
+		switch (funct3) {
+			case 0b010:
+				instruction = "sw";
+				break;
+			default:
+				instruction = "UNKNOWN_STORE_OPCODE";
+				break;
+		}
+
+		if (instruction == "UNKNOWN_STORE_OPCODE") {
+			std::string unknown_store = "UNKNOWN_STORE_OPCODE";
+			return unknown_store;
+		}
+
+		return format("{} {}, {}({})", instruction, cpu_register_names[rs2], imm, cpu_register_names[rs1]);
 	});
 
 	SetDisassembleFunction(BRANCH, [this](uint32_t opcode) {

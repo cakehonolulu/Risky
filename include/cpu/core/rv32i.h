@@ -9,6 +9,7 @@ public:
 	void unknown_zicsr_opcode(std::uint8_t funct3);
 	void unknown_miscmem_opcode(std::uint8_t funct3);
 	void unknown_branch_opcode(std::uint8_t funct3);
+	void unknown_store_opcode(std::uint8_t funct3);
 	void unknown_immediate_opcode(std::uint8_t funct3);
 	void no_ext(std::string extension);
 
@@ -36,6 +37,9 @@ private:
 
 	// BRANCH
 	void rv32i_bge(std::uint32_t opcode);
+
+	// STORE
+	void rv32i_sw(std::uint32_t opcode);
 
 	// SYSTEM
 	void rv32i_csrrw(std::uint32_t opcode);
