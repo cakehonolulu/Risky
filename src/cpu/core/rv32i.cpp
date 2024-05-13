@@ -44,6 +44,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 			rv32i_jal(opcode);
 			break;
 
+		case JALR:
+			rv32i_jalr(opcode);
+			break;
+
 		case SYSTEM:
 			if (has_zicsr)
 			{
@@ -128,6 +132,17 @@ void RV32I::rv32i_jal(std::uint32_t opcode) {
 	registers[rd] = pc + 4;
 
 	pc = (pc + imm);
+}
+
+void RV32I::rv32i_jalr(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::int32_t imm = static_cast<std::int32_t>((opcode >> 20) & 0xFFF);
+
+	std::int32_t target_address = (registers[rs1] + imm) & ~1;
+
+	registers[rd] = pc + 4;
+	pc = target_address;
 }
 
 void RV32I::rv32i_csrrw(std::uint32_t opcode) {

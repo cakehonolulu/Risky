@@ -12,6 +12,28 @@ using format;
 
 Disassembler::Disassembler() {
 
+	SetDisassembleFunction(JAL, [this](uint32_t opcode) {
+		// rd -> [11:7]
+		std::uint8_t rd = (opcode >> 7) & 0x1F;
+
+		int32_t imm =
+				static_cast<int32_t> (((opcode >> 31) & 0x1) << 20 |
+				                      ((opcode >> 21) & 0x3FF) << 1 |
+				                      ((opcode >> 20) & 0x1)) << 11 >> 11;
+
+		return format("jal {}, {}", cpu_register_names[rd], imm);
+	});
+
+	SetDisassembleFunction(JALR, [this](uint32_t opcode) {
+		std::uint8_t rd = (opcode >> 7) & 0x1F;
+		std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+		std::int32_t imm = static_cast<std::int32_t>((opcode >> 20) & 0xFFF);
+
+		std::string imm_str = imm >= 0 ? format("{:#x}", imm) : format("-{:#x}", -imm);
+
+		return format("jalr {}, {}({})", cpu_register_names[rd], imm_str, cpu_register_names[rs1]);
+	});
+
 	SetDisassembleFunction(MISCMEM, [this](uint32_t opcode) {
 		std::uint8_t funct3 = (opcode >> 12) & 0x7;
 
@@ -63,18 +85,6 @@ Disassembler::Disassembler() {
 		}
 
 		return format("{} {}, {}, {}", instruction, cpu_register_names[rd], cpu_register_names[rs1], imm);
-	});
-
-	SetDisassembleFunction(JAL, [this](uint32_t opcode) {
-		// rd -> [11:7]
-		std::uint8_t rd = (opcode >> 7) & 0x1F;
-
-		int32_t imm =
-				static_cast<int32_t> (((opcode >> 31) & 0x1) << 20 |
-				((opcode >> 21) & 0x3FF) << 1 |
-				((opcode >> 20) & 0x1)) << 11 >> 11;
-
-		return format("jal {}, {}", cpu_register_names[rd], imm);
 	});
 
 	SetDisassembleFunction(SYSTEM, [this](uint32_t opcode) {
