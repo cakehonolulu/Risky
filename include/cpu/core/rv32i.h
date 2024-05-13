@@ -36,6 +36,7 @@ private:
 	void rv32i_addi(std::uint32_t opcode);
 
 	// BRANCH
+	void rv32i_blt(std::uint32_t opcode);
 	void rv32i_bge(std::uint32_t opcode);
 
 	// STORE
@@ -44,5 +45,6 @@ private:
 	// SYSTEM
 	void rv32i_csrrw(std::uint32_t opcode);
 	void rv32i_csrrs(std::uint32_t opcode);
+	void rv32i_csrrc(std::uint32_t opcode);
 	void rv32i_csrrsi(std::uint32_t opcode);
 };

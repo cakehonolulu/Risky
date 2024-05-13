@@ -61,6 +61,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
 		case BRANCH:
 			switch (funct3) {
+				case 0b100:
+					rv32i_blt(opcode);
+					break;
+
 				case 0b101:
 					rv32i_bge(opcode);
 					break;
@@ -88,6 +92,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
 					case 0b010:
 						rv32i_csrrs(opcode);
+						break;
+
+					case 0b011:
+						rv32i_csrrc(opcode);
 						break;
 
 					case 0b101:
@@ -235,6 +243,22 @@ void RV32I::rv32i_csrrs(std::uint32_t opcode) {
 	registers[rd] = csr_value;
 }
 
+void RV32I::rv32i_csrrc(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint16_t csr = (opcode >> 20) & 0xFFF;
+
+	std::uint32_t csr_value = csr_read(csr);
+	std::uint32_t mask = registers[rs1];
+	std::uint32_t cleared_value = csr_value & (~mask);
+
+	if (rd != 0) {
+		registers[rd] = cleared_value;
+	}
+
+	pc += 4;
+}
+
 void RV32I::rv32i_csrrsi(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
@@ -276,6 +300,22 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 }
 
 // BRANCH
+void RV32I::rv32i_blt(std::uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+	std::int32_t imm = (static_cast<std::int32_t>(opcode) >> 20);
+
+	if (static_cast<std::int32_t>(registers[rs1]) < static_cast<std::int32_t>(registers[rs2])) {
+		// Calculate the branch target address
+		uint32_t target_address = pc + imm;
+		// Set the PC to the branch target address
+		pc = target_address;
+	} else {
+		// Increment PC by 4 (skip the branch instruction)
+		pc += 4;
+	}
+}
+
 void RV32I::rv32i_bge(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;

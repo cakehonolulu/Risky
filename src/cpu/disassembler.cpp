@@ -130,6 +130,9 @@ Disassembler::Disassembler() {
 		std::string instruction;
 
 		switch (funct3) {
+			case 0b100:
+				instruction = "blt";
+				break;
 			case 0b101:
 				instruction = "bge";
 				break;
@@ -164,6 +167,9 @@ Disassembler::Disassembler() {
 				break;
 			case 0b010:
 				instruction = "csrrs";
+				break;
+			case 0b011:
+				instruction = "csrrc";
 				break;
 			case 0b101:
 				instruction = "csrrw";
