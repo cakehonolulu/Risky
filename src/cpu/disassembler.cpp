@@ -99,6 +99,9 @@ Disassembler::Disassembler() {
 			case 0b001:
 				instruction = "csrrw";
 				break;
+			case 0b010:
+				instruction = "csrrs";
+				break;
 			case 0b101:
 				instruction = "csrrw";
 				break;

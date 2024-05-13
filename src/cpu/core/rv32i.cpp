@@ -56,6 +56,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 						rv32i_csrrw(opcode);
 						break;
 
+					case 0b010:
+						rv32i_csrrs(opcode);
+						break;
+
 					case 0b101:
 						rv32i_csrrsi(opcode);
 						break;
@@ -151,6 +155,18 @@ void RV32I::rv32i_csrrw(std::uint32_t opcode) {
 	std::uint16_t csr = (opcode >> 20) & 0xFFF;
 	registers[rd] = csr_read(csr);
 	csr_write(csr, registers[rs1]);
+}
+
+void RV32I::rv32i_csrrs(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint16_t csr = (opcode >> 20) & 0xFFF;
+
+	std::uint32_t csr_value = csr_read(csr);
+	std::uint32_t bit_mask = registers[rs1];
+
+	csr_value |= bit_mask;
+	registers[rd] = csr_value;
 }
 
 void RV32I::rv32i_csrrsi(std::uint32_t opcode) {
