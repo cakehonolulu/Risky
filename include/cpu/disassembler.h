@@ -7,16 +7,10 @@
 
 class Disassembler {
 public:
-	using DisassembleFunction = std::function<std::string(uint32_t)>;
-
-	Disassembler();
-
-	void SetDisassembleFunction(uint8_t opcode, DisassembleFunction func);
-
-	std::string Disassemble(uint32_t opcode);
-
-	std::string get_csr_name(std::uint16_t csr);
+    std::string Disassemble(uint32_t opcode);
 
 private:
-	std::unordered_map<uint8_t, DisassembleFunction> opcodeFunctions;
+    std::string DecodeRV16(uint16_t opcode);
+    std::string DecodeRV32(uint32_t opcode);
+    std::string get_csr_name(uint16_t csr);
 };

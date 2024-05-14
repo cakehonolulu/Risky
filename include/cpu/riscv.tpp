@@ -12,6 +12,8 @@ RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 	has_a = false;
 	has_m = false;
 	has_zicsr = false;
+    has_zifence = false;
+    has_compressed = false;
 
 	for (const std::string& ext : extensions) {
 		if (ext == "A") {
@@ -22,7 +24,9 @@ RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 			has_zicsr = true;
 		} else if (ext == "Zifence") {
 			has_zifence = true;
-		}
+        } else if (ext == "C") {
+            has_compressed = true;
+        }
 	}
 }
 

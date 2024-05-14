@@ -112,6 +112,7 @@ void ImGui_Risky::run() {
 	std::string xlen_;
 	bool has_M_extension = false;
 	bool has_A_extension = false;
+    bool has_C_extension = false;
 	bool has_Zicsr_extension = false;
 	bool has_Zifence_extension = false;
 	bool nommu = true;
@@ -432,6 +433,13 @@ void ImGui_Risky::run() {
 
 					std::string disassembly = disassembler.Disassemble(opcode);
 
+                    char opcodeBuffer[12];
+                    snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
+                             (opcode >> 24) & 0xFF,
+                             (opcode >> 16) & 0xFF,
+                             (opcode >> 8) & 0xFF,
+                             (opcode >> 0) & 0xFF);
+
 					// Highlight the current instruction
 					bool isCurrentInstruction;
 
@@ -453,9 +461,12 @@ void ImGui_Risky::run() {
 						                      ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
 					}
 
-					// Display the disassembled instruction with the current PC value
-					ImGui::Text("%08X: %s%s", currentPC, disassembly.c_str(),
-					            (isCurrentInstruction) ? " <-" : "");
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    ImGui::Text("%08X: %s ", currentPC, opcodeBuffer);
+                    ImGui::PopStyleColor();
+
+                    ImGui::SameLine();
+                    ImGui::Text("%s%s", disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
 
 					// Reset text color if it was changed for highlighting
 					if (isCurrentInstruction) {
@@ -534,7 +545,9 @@ void ImGui_Risky::run() {
 			ImGui::Text("Extensions:");
 			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
 			ImGui::SameLine();
-			ImGui::Checkbox("A (Atomic)", &has_A_extension);
+			ImGui::Checkbox("A (Atomic)", &has_A_extension);;
+            ImGui::SameLine();
+            ImGui::Checkbox("C (Compressed)", &has_C_extension);;
 
 
 			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
@@ -553,6 +566,8 @@ void ImGui_Risky::run() {
 						extensions.push_back("M");
 					if (has_A_extension)
 						extensions.push_back("A");
+                    if (has_C_extension)
+                        extensions.push_back("C");
 					if (has_Zicsr_extension)
 						extensions.push_back("Zicsr");
 					if (has_Zifence_extension)

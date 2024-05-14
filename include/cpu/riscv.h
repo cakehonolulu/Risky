@@ -17,6 +17,8 @@
 #define BRANCH  0b1100011
 #define SYSTEM  0b1110011
 
+#define C1      0b000
+
 #define AUIPC   0b0010111
 #define LUI     0b0110111
 #define JAL     0b1101111
@@ -87,6 +89,7 @@ public:
 	bool has_m;
 	bool has_zicsr;
 	bool has_zifence;
+    bool has_compressed;
 
 private:
 	std::vector<std::string> extensions;

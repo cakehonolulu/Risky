@@ -3,121 +3,165 @@
 
 RV32I::RV32I(const std::vector<std::string>& extensions)
 		: RISCV<32>(extensions) {
-
 	set_step_func([this] { step(); });
-
-
 }
 
 void RV32I::execute_opcode(std::uint32_t opcode) {
-	std::uint8_t opcode_ = opcode & 0x7F;
-	std::uint8_t funct3 = (opcode >> 12) & 0x7;
-	switch (opcode_) {
+    std::uint8_t opcode_rv32 = 0;
+    std::uint16_t opcode_ = 0;
+    std::uint16_t opcode_rv16 = 0;
+    std::uint8_t funct3 = 0;
 
-		case AUIPC:
-			rv32i_auipc(opcode);
-			break;
+    // Check for RV16
+    if ((opcode & 0x3) != 0x3) {
+        opcode_ = static_cast<std::uint16_t>(opcode);
+        opcode_rv16 = (opcode_ >> 0) & 0x3;
+        funct3 = (opcode_rv16 >> 13) & 0x7;
 
-		case LUI:
-			rv32i_lui(opcode);
-			break;
+        switch (opcode_rv16) {
+            case 1:
+                switch (funct3) {
+                    case 0:
+                        if (has_compressed)
+                        {
+                            rv32i_caddi(opcode_rv16);
+                        }
+                        else
+                        {
+                            no_ext("C");
+                        }
+                        break;
 
-		case MISCMEM:
-			switch (funct3) {
-				case 0b001:
-					if (has_zifence) {
-						rv32i_fence_i(opcode);
-					} else {
-						no_ext("Zifence");
-					}
-					break;
-				default:
-					unknown_miscmem_opcode(funct3);
-					break;
-			}
-			break;
+                    default:
+                        std::ostringstream logMessage;
+                        logMessage << "[RISKY] Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode_rv16) << ", funct3: 0b" << format("{:04b}", funct3);
 
-		case OPIMM:
-			switch (funct3) {
-				case 0b000:
-					rv32i_addi(opcode);
-					break;
-				default:
-					unknown_immediate_opcode(funct3);
-					break;
-			}
-			break;
+                        Logger::Instance().Error(logMessage.str());
 
-		case STORE:
-			switch (funct3) {
-				case 0b010:
-					rv32i_sw(opcode);
-					break;
-				default:
-					unknown_store_opcode(funct3);
-					break;
-			}
-			break;
+                        Risky::exit();
+                        break;
+                }
+                break;
 
-		case BRANCH:
-			switch (funct3) {
-				case 0b100:
-					rv32i_blt(opcode);
-					break;
+            default:
+                unknown_rv16_opcode(opcode_rv16);
+                break;
+        }
+        return;
+    }
+    else
+    {
+        // RV32
+        funct3 = (opcode >> 12) & 0x7;
+        opcode_rv32 = opcode & 0x7F;
 
-				case 0b101:
-					rv32i_bge(opcode);
-					break;
-				default:
-					unknown_branch_opcode(funct3);
-					break;
-			}
-			break;
+        switch (opcode_rv32) {
 
-		case JAL:
-			rv32i_jal(opcode);
-			break;
+            case AUIPC:
+                rv32i_auipc(opcode);
+                break;
 
-		case JALR:
-			rv32i_jalr(opcode);
-			break;
+            case LUI:
+                rv32i_lui(opcode);
+                break;
 
-		case SYSTEM:
-			if (has_zicsr)
-			{
-				switch (funct3) {
-					case 0b001:
-						rv32i_csrrw(opcode);
-						break;
+            case MISCMEM:
+                switch (funct3) {
+                    case 0b001:
+                        if (has_zifence) {
+                            rv32i_fence_i(opcode);
+                        } else {
+                            no_ext("Zifence");
+                        }
+                        break;
+                    default:
+                        unknown_miscmem_opcode(funct3);
+                        break;
+                }
+                break;
 
-					case 0b010:
-						rv32i_csrrs(opcode);
-						break;
+            case OPIMM:
+                switch (funct3) {
+                    case 0b000:
+                        rv32i_addi(opcode);
+                        break;
+                    default:
+                        unknown_immediate_opcode(funct3);
+                        break;
+                }
+                break;
 
-					case 0b011:
-						rv32i_csrrc(opcode);
-						break;
+            case STORE:
+                switch (funct3) {
+                    case 0b010:
+                        rv32i_sw(opcode);
+                        break;
+                    default:
+                        unknown_store_opcode(funct3);
+                        break;
+                }
+                break;
 
-					case 0b101:
-						rv32i_csrrsi(opcode);
-						break;
+            case BRANCH:
+                switch (funct3) {
+                    case 0b100:
+                        rv32i_blt(opcode);
+                        break;
 
-					default:
-						unknown_zicsr_opcode(funct3);
-						break;
-				}
-			}
-			else
-			{
-				no_ext("Zicsr");
-			}
+                    case 0b101:
+                        rv32i_bge(opcode);
+                        break;
+                    default:
+                        unknown_branch_opcode(funct3);
+                        break;
+                }
+                break;
 
-			break;
+            case JAL:
+                rv32i_jal(opcode);
+                break;
 
-		default:
-			unknown_opcode(opcode);
-			break;
-	}
+            case JALR:
+                rv32i_jalr(opcode);
+                break;
+
+            case SYSTEM:
+                if (has_zicsr)
+                {
+                    switch (funct3) {
+                        case 0b001:
+                            rv32i_csrrw(opcode);
+                            break;
+
+                        case 0b010:
+                            rv32i_csrrs(opcode);
+                            break;
+
+                        case 0b011:
+                            rv32i_csrrc(opcode);
+                            break;
+
+                        case 0b101:
+                            rv32i_csrrsi(opcode);
+                            break;
+
+                        default:
+                            unknown_zicsr_opcode(funct3);
+                            break;
+                    }
+                }
+                else
+                {
+                    no_ext("Zicsr");
+                }
+
+                break;
+
+            default:
+                unknown_rv32_opcode(opcode);
+                break;
+        }
+    }
 }
 
 void RV32I::step() {
@@ -134,6 +178,24 @@ void RV32I::no_ext(std::string extension) {
 	Logger::Instance().Error(logMessage.str());
 
 	Risky::exit();
+}
+
+void RV32I::unknown_rv16_opcode(std::uint16_t opcode) {
+    std::ostringstream logMessage;
+    logMessage << "[RISKY] Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode);
+
+    Logger::Instance().Error(logMessage.str());
+
+    Risky::exit();
+}
+
+void RV32I::unknown_rv32_opcode(std::uint32_t opcode) {
+    std::ostringstream logMessage;
+    logMessage << "[RISKY] Unimplemented RV32 Opcode: 0x" << format("{:08X}", opcode);
+
+    Logger::Instance().Error(logMessage.str());
+
+    Risky::exit();
 }
 
 void RV32I::unknown_zicsr_opcode(std::uint8_t funct3) {
@@ -181,6 +243,32 @@ void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_compressed_opcode(std::uint8_t funct3) {
+    std::ostringstream logMessage;
+    logMessage << "[RISKY] Unimplemented Compressed opcode: 0b" << format("{:08b}", funct3);
+
+    Logger::Instance().Error(logMessage.str());
+
+    Risky::exit();
+}
+
+// RV16
+void RV32I::rv32i_caddi(std::uint16_t opcode) {
+    std::uint8_t rd = ((opcode >> 7) & 0x7);
+    std::uint8_t imm = ((opcode >> 2) & 0x1F);
+
+    if (imm == 0) {
+        // C.NOP
+        return;
+    }
+
+    std::int32_t imm32 = static_cast<std::int32_t>(imm << 26) >> 26;
+    std::int32_t result = registers[rd] + imm32;
+
+    registers[rd] = result;
+}
+
+// AIUPC
 void RV32I::rv32i_auipc(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFFFF000) >> 12);
