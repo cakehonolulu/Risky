@@ -19,6 +19,24 @@ std::string Disassembler::Disassemble(uint32_t opcode) {
     }
 }
 
+std::string Disassembler::DecodeRV16(uint16_t opcode) {
+	uint16_t funct3 = (opcode >> 13) & 0x7;
+	uint16_t imm = (opcode >> 2) & 0x1F;
+	uint16_t rd_rs1 = (opcode >> 7) & 0x1F;
+	uint16_t imm6 = (opcode >> 12) & 0x1;
+	imm = (imm6 << 5) | imm;
+
+	if (funct3 == 0b000) {
+		if (rd_rs1 == 0 && imm == 0) {
+			return "c.nop";
+		} else {
+			return "c.addi " + std::string(cpu_register_names[rd_rs1]) + ", " + std::string(cpu_register_names[rd_rs1]) + ", " + std::to_string(static_cast<int8_t>(imm));
+		}
+	}
+
+	return "UNKNOWN_RV16_OPCODE";
+}
+
 std::string Disassembler::DecodeRV32(uint32_t opcode) {
     uint32_t funct3 = (opcode >> 12) & 0x7;
     uint32_t funct7 = (opcode >> 25) & 0x7F;
@@ -74,29 +92,6 @@ std::string Disassembler::DecodeRV32(uint32_t opcode) {
             break;
     }
     return "UNKNOWN_OPCODE";
-}
-
-std::string Disassembler::DecodeRV16(uint16_t opcode) {
-    uint8_t op = opcode & 0x3;          // bits [1:0]
-    uint8_t funct3 = (opcode >> 13) & 0x7; // bits [15:13]
-
-    if (op == 0x1 && funct3 == 0) {
-        uint8_t rd = (opcode >> 7) & 0x1F; // bits [11:7]
-        uint8_t imm5 = (opcode >> 2) & 0x1F; // bits [6:2]
-        bool imm_high_bit = opcode & 0x1000; // bit [12]
-
-        // Calculate the immediate value
-        int32_t imm = imm_high_bit ? 0xFFFFFFC0 : 0; // imm[31:6]
-        imm |= (imm_high_bit ? 0x20 : 0) | imm5; // imm[5:0]
-
-        if (rd == 0 && imm == 0) {
-            return "c.nop"; // No operation
-        } else if (rd != 0) {
-            return "c.addi x" + std::to_string(rd) + ", " + std::to_string(imm);
-        }
-    }
-
-    return "UNKNOWN_RV16_OPCODE";
 }
 
 std::string Disassembler::get_csr_name(uint16_t csr) {
