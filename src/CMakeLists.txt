@@ -5,4 +5,5 @@ target_sources(risky
                 cpu/core/rv32e.cpp
                 cpu/core/rv32i.cpp
                 cpu/core/rv64i.cpp
-                cpu/disassembler.cpp)
+                cpu/disassembler.cpp
+                utils/symbols.cpp)

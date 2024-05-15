@@ -120,6 +120,7 @@ void ImGui_Risky::run() {
     bool core_empty_alert = false;
     bool core_invalid_alert = false;
     bool loaded_binary = false;
+    bool symbols_loaded = false;
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -190,9 +191,17 @@ void ImGui_Risky::run() {
                         }
                         else
                         {
-                            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".bin", config);
+                            ImGuiFileDialog::Instance()->OpenDialog("BinaryLoadDlg", "Choose File", ".bin", config);
                         }
                     }
+
+                    if (ImGui::MenuItem("Load Symbol File")) {
+                        if (!symbols_loaded)
+                        {
+                            ImGuiFileDialog::Instance()->OpenDialog("SymbolsLoadDlg", "Choose File", ".map", config);
+                        }
+                    }
+
                     ImGui::EndMenu();
                 }
             }
@@ -440,38 +449,86 @@ void ImGui_Risky::run() {
                              (opcode >> 8) & 0xFF,
                              (opcode >> 0) & 0xFF);
 
-					// Highlight the current instruction
-					bool isCurrentInstruction;
+                    // Check if it's a jump instruction (e.g., jal, jalr)
+                    bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
 
-					if (core_.contains("RV32I"))
-					{
-						isCurrentInstruction = (currentPC == riscv_core_32->pc);
-					}
-					else if (core_.contains("RV32E"))
-					{
-						isCurrentInstruction = (currentPC == riscv_core_32e->pc);
-					}
-					else if (core_.contains("RV64I"))
-					{
-						isCurrentInstruction = (currentPC == riscv_core_64->pc);
-					}
+                    // Highlight the current instruction
+                    bool isCurrentInstruction = false;
+                    if (core_.contains("RV32I")) {
+                        isCurrentInstruction = (currentPC == riscv_core_32->pc);
+                    } else if (core_.contains("RV32E")) {
+                        isCurrentInstruction = (currentPC == riscv_core_32e->pc);
+                    } else if (core_.contains("RV64I")) {
+                        isCurrentInstruction = (currentPC == riscv_core_64->pc);
+                    }
 
-					if (isCurrentInstruction) {
-						ImGui::PushStyleColor(ImGuiCol_Text,
-						                      ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
-					}
+                    if (isCurrentInstruction) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
+                    }
 
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-                    ImGui::Text("%08X: %s ", currentPC, opcodeBuffer);
-                    ImGui::PopStyleColor();
+                    // Display the instruction with appropriate formatting
+                    if (isJumpInstruction) {
+                        std::istringstream iss(disassembly);
+                        std::string opcode;
+                        std::string rd;
+                        std::string rs;
+                        std::string immediate;
 
-                    ImGui::SameLine();
-                    ImGui::Text("%s%s", disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
+                        iss >> opcode;
 
-					// Reset text color if it was changed for highlighting
-					if (isCurrentInstruction) {
-						ImGui::PopStyleColor();
-					}
+                        if (opcode == "jal") {
+                            iss >> rd >> immediate;
+                            rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+                        } else if (opcode == "jalr") {
+                            iss >> rd >> rs >> immediate;
+                            rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+                            rs.erase(std::remove(rs.begin(), rs.end(), ','), rs.end());
+                        }
+
+                        std::uint32_t jumpOffset;
+                        try {
+                            jumpOffset = std::stoul(immediate);
+                        } catch (const std::invalid_argument& e) {
+                            Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
+                            Risky::exit();
+                        }
+
+                        std::uint32_t jumpAddress = currentPC + jumpOffset;
+
+                        auto jumpSymbol = symbols.find(jumpAddress);
+                        if (jumpSymbol != symbols.end()) {
+                            if (opcode == "jal")
+                            {
+                                ImGui::Text("%08X: %s %s %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), jumpSymbol->second.name.c_str());
+                            }
+                            else if (opcode == "jalr")
+                            {
+                                ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
+                            }
+                            else
+                            {
+                                ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
+                            }
+
+                        } else {
+                            ImGui::Text("%08X: %s %s %s", currentPC, opcodeBuffer, disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
+                        }
+                    } else {
+                        ImGui::Text("%08X: %s %s", currentPC, opcodeBuffer, disassembly.c_str());
+
+                        auto it = symbols.find(currentPC);
+                        if (it != symbols.end()) {
+                            ImGui::SameLine();
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray text color for symbols
+                            ImGui::Text("<%s>", it->second.name.c_str());
+                            ImGui::PopStyleColor();
+                        }
+                    }
+
+                    // Reset text color if it was changed for highlighting
+                    if (isCurrentInstruction) {
+                        ImGui::PopStyleColor();
+                    }
 
 					// Update the current PC for the next instruction
 					currentPC += 4;
@@ -663,7 +720,19 @@ void ImGui_Risky::run() {
 			ImGui::End();
 		}
 
-		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
+        if (ImGuiFileDialog::Instance()->Display("SymbolsLoadDlg")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+
+                symbols = parse_symbols_linux_map(filePathName);
+                symbols_loaded = true;
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+		if (ImGuiFileDialog::Instance()->Display("BinaryLoadDlg")) {
 			if (ImGuiFileDialog::Instance()->IsOk()) {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
