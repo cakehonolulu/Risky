@@ -8,6 +8,16 @@
 #include <cpu/core/core.h>
 #include <utils/symbols.h>
 #include <memory>
+#include "imgui.h"
+
+struct DisplayItem {
+	std::string text;
+	std::string opcodeBuffer;
+	bool isCurrentInstruction;
+	bool isJumpInstruction;
+	bool hasSymbol;
+	ImVec4 color;
+};
 
 class ImGui_Risky : public Risky {
 public:
@@ -24,4 +34,5 @@ private:
 	std::unique_ptr<RV64I> riscv_core_64;
 
     std::unordered_map<std::uint32_t, Symbol> symbols;
+	bool symbols_loaded;
 };

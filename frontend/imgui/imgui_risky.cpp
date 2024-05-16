@@ -121,7 +121,7 @@ void ImGui_Risky::run() {
     bool core_empty_alert = false;
     bool core_invalid_alert = false;
     bool loaded_binary = false;
-    bool symbols_loaded = false;
+    symbols_loaded = false;
     Core core;
 
 #ifdef __EMSCRIPTEN__
@@ -574,19 +574,16 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
     ImGui::SameLine();
 
-    // Input box to jump to a specific PC value
-    static char jumpToAddressBuffer[9] = "00000000"; // Assumes 32-bit addresses
+    static char jumpToAddressBuffer[9] = "00000000";
     ImGui::InputText("->", jumpToAddressBuffer,
                      sizeof(jumpToAddressBuffer),
                      ImGuiInputTextFlags_CharsHexadecimal);
 
-    // Convert the input buffer to a uint32_t
     std::uint32_t jumpToAddress =
             std::strtoul(jumpToAddressBuffer, nullptr, 16);
 
     ImGui::SameLine();
 
-    // Button to jump to the specified PC value
     if (ImGui::Button("Jump")) {
         core->set_pc_32(jumpToAddress);
     }
@@ -594,8 +591,8 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
     ImGui::Separator();
 
     if (Risky::aborted()) {
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
-        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
         ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
         ImGui::PopStyleVar(2);
     } else {
@@ -608,8 +605,8 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
     if (Risky::aborted()) {
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
-                            ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
-        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+                            ImGui::GetStyle().Alpha * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
         ImGui::Button("Step");
         ImGui::PopStyleVar(2);
     }
@@ -628,114 +625,109 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
         }
     }
 
-    // ImGui window for disassembled code
     ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
 
-    // Calculate the number of instructions to display based on the window size
     int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
 
-    // Get the current PC value from the CPU
     std::uint32_t currentPC;
 
     std::uint32_t pc = std::any_cast<std::uint32_t>(core->pc());
 
     currentPC = pc;
 
-    // Loop to disassemble and display instructions
-    ImGuiListClipper clipper;
-    clipper.Begin(numInstructions); // Pass the number of items
-    while (clipper.Step()) {
-        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-            // Disassemble the instruction at the current PC
-            std::uint32_t opcode = core->bus_read32(currentPC);
+	std::vector<DisplayItem> displayItems;
 
-            std::string disassembly = disassembler.Disassemble(opcode);
+	for (int i = 0; i < numInstructions; ++i) {
+		currentPC = pc + i * 4;
 
-            char opcodeBuffer[12];
-            snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
-                     (opcode >> 24) & 0xFF,
-                     (opcode >> 16) & 0xFF,
-                     (opcode >> 8) & 0xFF,
-                     (opcode >> 0) & 0xFF);
+		auto it = symbols.find(currentPC);
+		if (it != symbols.end()) {
+			displayItems.push_back({ format("{:08X}  <{}>:", currentPC, it->second.name), "", false, false, true, ImVec4(0.5f, 0.5f, 0.5f, 1.0f) });
+		}
 
-            // Check if it's a jump instruction (e.g., jal, jalr)
-            bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
+		// Disassemble the instruction at the current PC
+		std::uint32_t opcode = core->bus_read32(currentPC);
+		std::string disassembly = disassembler.Disassemble(opcode);
 
-            // Highlight the current instruction
-            bool isCurrentInstruction = (currentPC == pc);
+		char opcodeBuffer[12];
+		snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
+		         (opcode >> 24) & 0xFF,
+		         (opcode >> 16) & 0xFF,
+		         (opcode >> 8) & 0xFF,
+		         (opcode >> 0) & 0xFF);
 
-            if (isCurrentInstruction) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
-            }
+		bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
+		bool isCurrentInstruction = (currentPC == pc);
 
-            // Display the instruction with appropriate formatting
-            if (isJumpInstruction) {
-                std::istringstream iss(disassembly);
-                std::string opcode_dis;
-                std::string rd;
-                std::string rs;
-                std::string immediate;
+		ImVec4 instructionColor = isCurrentInstruction ? ImVec4(1.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-                iss >> opcode_dis;
+		std::string displayText;
 
-                if (opcode_dis == "jal") {
-                    iss >> rd >> immediate;
-                    rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
-                } else if (opcode_dis == "jalr") {
-                    iss >> rd >> rs >> immediate;
-                    rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
-                    rs.erase(std::remove(rs.begin(), rs.end(), ','), rs.end());
-                }
+		if (isJumpInstruction) {
+			std::istringstream iss(disassembly);
+			std::string opcode_dis, rd, rs, immediate;
+			iss >> opcode_dis;
 
-                std::uint32_t jumpOffset;
-                try {
-                    jumpOffset = std::stoul(immediate);
-                } catch (const std::invalid_argument& e) {
-                    Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
-                    Risky::exit();
-                }
+			if (opcode_dis == "jal") {
+				iss >> rd >> immediate;
+				rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+			} else if (opcode_dis == "jalr") {
+				iss >> rd >> rs >> immediate;
+				rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+				rs.erase(std::remove(rs.begin(), rs.end(), ','), rs.end());
+			}
 
-                std::uint32_t jumpAddress = currentPC + jumpOffset;
+			std::uint32_t jumpOffset;
+			try {
+				jumpOffset = std::stoul(immediate);
+			} catch (const std::invalid_argument& e) {
+				Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
+				Risky::exit();
+			}
 
-                auto jumpSymbol = symbols.find(jumpAddress);
-                if (jumpSymbol != symbols.end()) {
-                    if (opcode_dis == "jal")
-                    {
-                        ImGui::Text("%08X: %s %s %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), jumpSymbol->second.name.c_str());
-                    }
-                    else if (opcode_dis == "jalr")
-                    {
-                        ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
-                    }
-                    else
-                    {
-                        ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
-                    }
+			std::uint32_t jumpAddress = currentPC + jumpOffset;
 
-                } else {
-                    ImGui::Text("%08X: %s %s %s", currentPC, opcodeBuffer, disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
-                }
-            } else {
-                ImGui::Text("%08X: %s %s", currentPC, opcodeBuffer, disassembly.c_str());
+			auto jumpSymbol = symbols.find(jumpAddress);
+			if (symbols_loaded && jumpSymbol != symbols.end()) {
+				if (opcode_dis == "jal") {
+					displayText = format("{} {} {}, <{}>", opcode_dis, rd, immediate, jumpSymbol->second.name);
+				} else if (opcode_dis == "jalr") {
+					displayText = format("{} {}, {}, <{}>", opcode_dis, rd, rs, jumpSymbol->second.name);
+				}
+			} else {
+				displayText = format("{} {} {}", opcode_dis, rd, immediate);
+			}
+		} else {
+			displayText = disassembly;
+		}
 
-                auto it = symbols.find(currentPC);
-                if (it != symbols.end()) {
-                    ImGui::SameLine();
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray text color for symbols
-                    ImGui::Text("<%s>", it->second.name.c_str());
-                    ImGui::PopStyleColor();
-                }
-            }
+		displayItems.push_back({ format("{:08X}: {}", currentPC, displayText), opcodeBuffer, isCurrentInstruction, isJumpInstruction, it != symbols.end(), instructionColor });
+	}
 
-            // Reset text color if it was changed for highlighting
-            if (isCurrentInstruction) {
-                ImGui::PopStyleColor();
-            }
+	ImGuiListClipper clipper;
+	clipper.Begin(displayItems.size());
 
-            // Update the current PC for the next instruction
-            currentPC += 4;
-        }
-    }
+	while (clipper.Step()) {
+		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+			const DisplayItem& item = displayItems[i];
 
-    ImGui::EndChild();
+			if (item.isCurrentInstruction) {
+				ImGui::PushStyleColor(ImGuiCol_Text, item.color);
+			}
+
+			ImGui::Text("%s", item.text.c_str());
+
+			ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize(item.opcodeBuffer.c_str()).x);
+
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+			ImGui::Text("%s", item.opcodeBuffer.c_str());
+			ImGui::PopStyleColor();
+
+			if (item.isCurrentInstruction) {
+				ImGui::PopStyleColor();
+			}
+		}
+	}
+
+	ImGui::EndChild();
 }
