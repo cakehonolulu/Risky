@@ -698,7 +698,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 			auto jumpSymbol = symbols.find(jumpAddress);
 			if (symbols_loaded && jumpSymbol != symbols.end()) {
 				if (opcode_dis == "jal") {
-					displayText = format("{} {} {}, <{}>", opcode_dis, rd, immediate, jumpSymbol->second.name);
+					displayText = format("{} {}, <{}>", opcode_dis, rd, jumpSymbol->second.name);
 				} else if (opcode_dis == "jalr") {
 					displayText = format("{} {}, {}, <{}>", opcode_dis, rd, rs, jumpSymbol->second.name);
 				}
