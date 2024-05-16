@@ -309,235 +309,10 @@ void ImGui_Risky::run() {
 
 		if (disassembly_window)
 		{
-			Disassembler disassembler;
-
-			ImGui::Text("PC:");
-
-            ImGui::SameLine();
-
-			// Input box to jump to a specific PC value
-			static char jumpToAddressBuffer[9] = "00000000"; // Assumes 32-bit addresses
-			ImGui::InputText("->", jumpToAddressBuffer,
-			                 sizeof(jumpToAddressBuffer),
-			                 ImGuiInputTextFlags_CharsHexadecimal);
-
-			// Convert the input buffer to a uint32_t
-			std::uint32_t jumpToAddress =
-					std::strtoul(jumpToAddressBuffer, nullptr, 16);
-
-            ImGui::SameLine();
-
-			// Button to jump to the specified PC value
-			if (ImGui::Button("Jump")) {
-				if (core_.contains("RV32I"))
-				{
-					riscv_core_32->pc = jumpToAddress;
-				}
-				else if (core_.contains("RV32E"))
-				{
-					riscv_core_32e->pc = jumpToAddress;
-				}
-				else if (core_.contains("RV64I"))
-				{
-					riscv_core_64->pc = jumpToAddress;
-				}
-			}
-
-            ImGui::Separator();
-
-            if (Risky::aborted()) {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
-                ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
-                ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
-                ImGui::PopStyleVar(2);
-            } else {
-                if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
-                    if (core_.contains("RV32I")) {
-                        riscv_core_32->run();
-                    } else if (core_.contains("RV32E")) {
-                        riscv_core_32e->run();
-                    } else if (core_.contains("RV64I")) {
-                        riscv_core_64->run();
-                    }
-                }
-            }
-
-            ImGui::SameLine();
-
-            if (Risky::aborted()) {
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
-                                    ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
-                ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
-                ImGui::Button("Step");
-                ImGui::PopStyleVar(2);
-            }
-            else
+			if (core.get_xlen() == 32)
             {
-                if (ImGui::Button("Step")) {
-                    if (core_.contains("RV32I")) {
-                        riscv_core_32->step();
-                    } else if (core_.contains("RV32E")) {
-                        riscv_core_32e->step();
-                    } else if (core_.contains("RV64I")) {
-                        riscv_core_64->step();
-                    }
-                }
+                imgui_disassembly_window_32(&core);
             }
-
-            if (Risky::aborted()) {
-                ImGui::SameLine();
-                if (ImGui::Button("Reset")) {
-                    if (core_.contains("RV32I")) {
-                        riscv_core_32->reset();
-                        Risky::abort = false;
-                    } else if (core_.contains("RV32E")) {
-                        riscv_core_32e->reset();
-                        Risky::abort = false;
-                    } else if (core_.contains("RV64I")) {
-                        riscv_core_64->reset();
-                        Risky::abort = false;
-                    }
-                }
-            }
-
-			// ImGui window for disassembled code
-			ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
-
-			// Calculate the number of instructions to display based on the window size
-			int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
-
-			// Get the current PC value from the CPU
-			std::uint32_t currentPC;
-
-			if (core_.contains("RV32I"))
-			{
-				currentPC = riscv_core_32->pc;
-			}
-			else if (core_.contains("RV32E"))
-			{
-				currentPC = riscv_core_32e->pc;
-			}
-			else if (core_.contains("RV64I"))
-			{
-				currentPC = riscv_core_64->pc;
-			}
-
-			// Loop to disassemble and display instructions
-			ImGuiListClipper clipper;
-			clipper.Begin(numInstructions); // Pass the number of items
-			while (clipper.Step()) {
-				for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-					// Disassemble the instruction at the current PC
-					std::uint32_t opcode;
-					if (core_.contains("RV32I"))
-					{
-						opcode = riscv_core_32->bus.read32(currentPC);
-					}
-					else if (core_.contains("RV32E"))
-					{
-						opcode = riscv_core_32e->bus.read32(currentPC);
-					}
-					else if (core_.contains("RV64I"))
-					{
-						opcode = riscv_core_64->bus.read32(currentPC);
-					}
-
-					std::string disassembly = disassembler.Disassemble(opcode);
-
-                    char opcodeBuffer[12];
-                    snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
-                             (opcode >> 24) & 0xFF,
-                             (opcode >> 16) & 0xFF,
-                             (opcode >> 8) & 0xFF,
-                             (opcode >> 0) & 0xFF);
-
-                    // Check if it's a jump instruction (e.g., jal, jalr)
-                    bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
-
-                    // Highlight the current instruction
-                    bool isCurrentInstruction = false;
-                    if (core_.contains("RV32I")) {
-                        isCurrentInstruction = (currentPC == riscv_core_32->pc);
-                    } else if (core_.contains("RV32E")) {
-                        isCurrentInstruction = (currentPC == riscv_core_32e->pc);
-                    } else if (core_.contains("RV64I")) {
-                        isCurrentInstruction = (currentPC == riscv_core_64->pc);
-                    }
-
-                    if (isCurrentInstruction) {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
-                    }
-
-                    // Display the instruction with appropriate formatting
-                    if (isJumpInstruction) {
-                        std::istringstream iss(disassembly);
-                        std::string opcode;
-                        std::string rd;
-                        std::string rs;
-                        std::string immediate;
-
-                        iss >> opcode;
-
-                        if (opcode == "jal") {
-                            iss >> rd >> immediate;
-                            rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
-                        } else if (opcode == "jalr") {
-                            iss >> rd >> rs >> immediate;
-                            rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
-                            rs.erase(std::remove(rs.begin(), rs.end(), ','), rs.end());
-                        }
-
-                        std::uint32_t jumpOffset;
-                        try {
-                            jumpOffset = std::stoul(immediate);
-                        } catch (const std::invalid_argument& e) {
-                            Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
-                            Risky::exit();
-                        }
-
-                        std::uint32_t jumpAddress = currentPC + jumpOffset;
-
-                        auto jumpSymbol = symbols.find(jumpAddress);
-                        if (jumpSymbol != symbols.end()) {
-                            if (opcode == "jal")
-                            {
-                                ImGui::Text("%08X: %s %s %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), jumpSymbol->second.name.c_str());
-                            }
-                            else if (opcode == "jalr")
-                            {
-                                ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
-                            }
-                            else
-                            {
-                                ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
-                            }
-
-                        } else {
-                            ImGui::Text("%08X: %s %s %s", currentPC, opcodeBuffer, disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
-                        }
-                    } else {
-                        ImGui::Text("%08X: %s %s", currentPC, opcodeBuffer, disassembly.c_str());
-
-                        auto it = symbols.find(currentPC);
-                        if (it != symbols.end()) {
-                            ImGui::SameLine();
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray text color for symbols
-                            ImGui::Text("<%s>", it->second.name.c_str());
-                            ImGui::PopStyleColor();
-                        }
-                    }
-
-                    // Reset text color if it was changed for highlighting
-                    if (isCurrentInstruction) {
-                        ImGui::PopStyleColor();
-                    }
-
-					// Update the current PC for the next instruction
-					currentPC += 4;
-				}
-			}
-
-			ImGui::EndChild();
 		}
 
 		if (cpu_reg_debug_window)
@@ -790,4 +565,177 @@ void ImGui_Risky::imgui_registers_window_64(Core *core, bool *debug_window) {
     ImGui::Text("Program Counter (PC): 0x%016lX", pc);
 
     ImGui::End();
+}
+
+void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
+    Disassembler disassembler;
+
+    ImGui::Text("PC:");
+
+    ImGui::SameLine();
+
+    // Input box to jump to a specific PC value
+    static char jumpToAddressBuffer[9] = "00000000"; // Assumes 32-bit addresses
+    ImGui::InputText("->", jumpToAddressBuffer,
+                     sizeof(jumpToAddressBuffer),
+                     ImGuiInputTextFlags_CharsHexadecimal);
+
+    // Convert the input buffer to a uint32_t
+    std::uint32_t jumpToAddress =
+            std::strtoul(jumpToAddressBuffer, nullptr, 16);
+
+    ImGui::SameLine();
+
+    // Button to jump to the specified PC value
+    if (ImGui::Button("Jump")) {
+        core->set_pc_32(jumpToAddress);
+    }
+
+    ImGui::Separator();
+
+    if (Risky::aborted()) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+        ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
+        ImGui::PopStyleVar(2);
+    } else {
+        if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
+            core->run();
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (Risky::aborted()) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
+                            ImGui::GetStyle().Alpha * 0.5f); // Reduce alpha for disabled appearance
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f); // Ensure full alpha for text in disabled button
+        ImGui::Button("Step");
+        ImGui::PopStyleVar(2);
+    }
+    else
+    {
+        if (ImGui::Button("Step")) {
+            core->step();
+        }
+    }
+
+    if (Risky::aborted()) {
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            core->reset();
+            Risky::abort = false;
+        }
+    }
+
+    // ImGui window for disassembled code
+    ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
+
+    // Calculate the number of instructions to display based on the window size
+    int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
+
+    // Get the current PC value from the CPU
+    std::uint32_t currentPC;
+
+    std::uint32_t pc = std::any_cast<std::uint32_t>(core->pc());
+
+    currentPC = pc;
+
+    // Loop to disassemble and display instructions
+    ImGuiListClipper clipper;
+    clipper.Begin(numInstructions); // Pass the number of items
+    while (clipper.Step()) {
+        for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+            // Disassemble the instruction at the current PC
+            std::uint32_t opcode = core->bus_read32(currentPC);
+
+            std::string disassembly = disassembler.Disassemble(opcode);
+
+            char opcodeBuffer[12];
+            snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
+                     (opcode >> 24) & 0xFF,
+                     (opcode >> 16) & 0xFF,
+                     (opcode >> 8) & 0xFF,
+                     (opcode >> 0) & 0xFF);
+
+            // Check if it's a jump instruction (e.g., jal, jalr)
+            bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
+
+            // Highlight the current instruction
+            bool isCurrentInstruction = (currentPC == pc);
+
+            if (isCurrentInstruction) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow text color
+            }
+
+            // Display the instruction with appropriate formatting
+            if (isJumpInstruction) {
+                std::istringstream iss(disassembly);
+                std::string opcode_dis;
+                std::string rd;
+                std::string rs;
+                std::string immediate;
+
+                iss >> opcode_dis;
+
+                if (opcode_dis == "jal") {
+                    iss >> rd >> immediate;
+                    rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+                } else if (opcode_dis == "jalr") {
+                    iss >> rd >> rs >> immediate;
+                    rd.erase(std::remove(rd.begin(), rd.end(), ','), rd.end());
+                    rs.erase(std::remove(rs.begin(), rs.end(), ','), rs.end());
+                }
+
+                std::uint32_t jumpOffset;
+                try {
+                    jumpOffset = std::stoul(immediate);
+                } catch (const std::invalid_argument& e) {
+                    Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
+                    Risky::exit();
+                }
+
+                std::uint32_t jumpAddress = currentPC + jumpOffset;
+
+                auto jumpSymbol = symbols.find(jumpAddress);
+                if (jumpSymbol != symbols.end()) {
+                    if (opcode_dis == "jal")
+                    {
+                        ImGui::Text("%08X: %s %s %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), jumpSymbol->second.name.c_str());
+                    }
+                    else if (opcode_dis == "jalr")
+                    {
+                        ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
+                    }
+                    else
+                    {
+                        ImGui::Text("%08X: %s %s %s, %s, <%s>", currentPC, opcodeBuffer, opcode_dis.c_str(), rd.c_str(), rs.c_str(), jumpSymbol->second.name.c_str());
+                    }
+
+                } else {
+                    ImGui::Text("%08X: %s %s %s", currentPC, opcodeBuffer, disassembly.c_str(), (isCurrentInstruction) ? " <-" : "");
+                }
+            } else {
+                ImGui::Text("%08X: %s %s", currentPC, opcodeBuffer, disassembly.c_str());
+
+                auto it = symbols.find(currentPC);
+                if (it != symbols.end()) {
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray text color for symbols
+                    ImGui::Text("<%s>", it->second.name.c_str());
+                    ImGui::PopStyleColor();
+                }
+            }
+
+            // Reset text color if it was changed for highlighting
+            if (isCurrentInstruction) {
+                ImGui::PopStyleColor();
+            }
+
+            // Update the current PC for the next instruction
+            currentPC += 4;
+        }
+    }
+
+    ImGui::EndChild();
 }

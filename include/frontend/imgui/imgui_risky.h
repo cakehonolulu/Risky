@@ -16,6 +16,7 @@ public:
 
     void imgui_registers_window_32(Core *core, bool *debug_window);
     void imgui_registers_window_64(Core *core, bool *debug_window);
+    void imgui_disassembly_window_32(Core *core);
 
 private:
 	std::unique_ptr<RV32I> riscv_core_32;

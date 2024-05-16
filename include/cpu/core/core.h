@@ -18,11 +18,20 @@ public:
     std::function<std::any()> pc;
     std::function<std::any(size_t)> registers;
     std::function<std::any(size_t)> csrs;
+    std::function<std::uint32_t(std::uint32_t)> bus_read32;
+    std::function<void()> step;
+    std::function<void()> reset;
+    std::function<void()> run;
 
     // Assign a new RISCV instance to Core
     template <std::uint8_t xlen, bool is_embedded>
     void assign(RISCV<xlen, is_embedded>* riscv) {
         // Assign function pointers based on xlen
+        bus_read32 = [riscv](std::uint32_t address) -> std::uint32_t { return std::uint32_t(riscv->bus.read32(address)); };
+        step = [riscv]() { riscv->step(); };
+        reset = [riscv]() { riscv->reset(); };
+        run = [riscv]() { riscv->run(); };
+
         if constexpr (xlen == 32) {
             pc = [riscv]() -> std::any { return std::any(riscv->pc); };
             registers = [riscv](size_t index) -> std::any { return std::any(riscv->registers[index]); };
@@ -39,23 +48,29 @@ public:
         this->is_embedded = is_embedded;
     }
 
-    // Set the pc value with a templated function
-    template <std::uint8_t xlen>
-    void set_pc(std::conditional_t<xlen == 32, std::uint32_t, std::uint64_t> newPC) {
-        if (this->xlen == xlen) {
-            if constexpr (xlen == 32) {
-                auto riscvInstance = std::any_cast<RISCV<32, false>*>(riscv);
-                if (riscvInstance) {
-                    riscvInstance->pc = newPC;
-                }
-            } else if constexpr (xlen == 64) {
-                auto riscvInstance = std::any_cast<RISCV<64, false>*>(riscv);
-                if (riscvInstance) {
-                    riscvInstance->pc = newPC;
-                }
+    // Set the pc value for xlen = 32
+    void set_pc_32(std::uint32_t newPC) {
+        if (xlen == 32) {
+            auto riscvInstance = std::any_cast<RISCV<32, false>*>(riscv);
+            if (riscvInstance) {
+                riscvInstance->pc = newPC;
             }
         } else {
-            throw std::runtime_error("Incorrect xlen for setPC");
+            Logger::Instance().Error("Incorrect xlen for set_pc_32");
+            Risky::exit();
+        }
+    }
+
+    // Set the pc value for xlen = 64
+    void set_pc_64(std::uint64_t newPC) {
+        if (xlen == 64) {
+            auto riscvInstance = std::any_cast<RISCV<64, false>*>(riscv);
+            if (riscvInstance) {
+                riscvInstance->pc = newPC;
+            }
+        } else {
+            Logger::Instance().Error("Incorrect xlen for set_pc_64");
+            Risky::exit();
         }
     }
 
