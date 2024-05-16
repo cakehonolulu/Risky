@@ -7,6 +7,7 @@
 #include "ImGuiFileDialog.h"
 #include "cpu/core/rv64i.h"
 #include "cpu/core/rv32e.h"
+#include "cpu/core/core.h"
 #include <cstdio>
 #include <SDL3/SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -121,6 +122,7 @@ void ImGui_Risky::run() {
     bool core_invalid_alert = false;
     bool loaded_binary = false;
     bool symbols_loaded = false;
+    Core core;
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -540,52 +542,14 @@ void ImGui_Risky::run() {
 
 		if (cpu_reg_debug_window)
 		{
-			ImGui::Begin("CPU Registers", &cpu_reg_debug_window);
-			ImGui::Text("General-Purpose Registers:");
-
-			const int numColumns = 4;
-			const float columnWidth = 150.0f;
-
-			ImGui::Columns(numColumns, nullptr, false);
-
-			for (int i = 0; i < 32; ++i)
-			{
-				ImGui::Text("%s:", cpu_abi_register_names[i].c_str());
-				ImGui::NextColumn();
-				if (core_.contains("RV32I"))
-				{
-					ImGui::Text("0x%08X", riscv_core_32->registers[i]);
-				}
-				else if (core_.contains("RV32E"))
-				{
-					ImGui::Text("0x%08X", riscv_core_32e->registers[i]);
-				}
-				else if (core_.contains("RV64I"))
-				{
-					ImGui::Text("0x%016lX", riscv_core_64->registers[i]);
-				}
-
-				ImGui::NextColumn();
-			}
-
-			ImGui::Columns(1);
-
-			ImGui::Separator();
-
-			if (core_.contains("RV32I"))
-			{
-				ImGui::Text("Program Counter (PC): 0x%08X", riscv_core_32->pc);
-			}
-			else if (core_.contains("RV32E"))
-			{
-				ImGui::Text("Program Counter (PC): 0x%08X", riscv_core_32e->pc);
-			}
-			else if (core_.contains("RV64I"))
-			{
-				ImGui::Text("Program Counter (PC): 0x%016lX", riscv_core_64->pc);
-			}
-
-			ImGui::End();
+            if (core.get_xlen() == 32)
+            {
+                imgui_registers_window_32(&core, &cpu_reg_debug_window);
+            }
+            else if (core.get_xlen() == 64)
+            {
+                imgui_registers_window_64(&core, &cpu_reg_debug_window);
+            }
 		}
 
 		if (core_config_window)
@@ -636,6 +600,7 @@ void ImGui_Risky::run() {
 						case 0:
 						{
 							riscv_core_32 = std::make_unique<RV32I>(extensions);
+                            core.assign(riscv_core_32.get());
 							core_ = "RV32I";
 							xlen_ = "32";
                             built_core = true;
@@ -645,6 +610,7 @@ void ImGui_Risky::run() {
 						case 1:
 						{
 							riscv_core_32e = std::make_unique<RV32E>(extensions);
+                            core.assign(riscv_core_32e.get());
 							core_ = "RV32E";
 							xlen_ = "32";
                             built_core = true;
@@ -654,6 +620,7 @@ void ImGui_Risky::run() {
 						case 2:
 						{
 							riscv_core_64 = std::make_unique<RV64I>(extensions);
+                            core.assign(riscv_core_64.get());
 							core_ = "RV64I";
 							xlen_ = "64";
                             built_core = true;
@@ -772,4 +739,66 @@ void ImGui_Risky::run() {
 	SDL_GL_DeleteContext(gl_context);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+void ImGui_Risky::imgui_registers_window_32(Core *core, bool *debug_window) {
+    ImGui::Begin("CPU Registers", debug_window);
+    ImGui::Text("General-Purpose Registers:");
+
+    const int numColumns = 4;
+    const float columnWidth = 150.0f;
+
+    auto pc = std::any_cast<std::uint32_t>(core->pc());
+
+    ImGui::Columns(numColumns, nullptr, false);
+
+    for (int i = 0; i < 32; ++i)
+    {
+        ImGui::Text("%s:", cpu_abi_register_names[i].c_str());
+
+        ImGui::NextColumn();
+
+        ImGui::Text("0x%08X", core->register_32(i));
+
+        ImGui::NextColumn();
+    }
+
+    ImGui::Columns(1);
+
+    ImGui::Separator();
+
+    ImGui::Text("Program Counter (PC): 0x%08X", pc);
+
+    ImGui::End();
+}
+
+void ImGui_Risky::imgui_registers_window_64(Core *core, bool *debug_window) {
+    ImGui::Begin("CPU Registers", debug_window);
+    ImGui::Text("General-Purpose Registers:");
+
+    const int numColumns = 4;
+    const float columnWidth = 150.0f;
+
+    auto pc = std::any_cast<std::uint64_t>(core->pc());
+
+    ImGui::Columns(numColumns, nullptr, false);
+
+    for (int i = 0; i < 32; ++i)
+    {
+        ImGui::Text("%s:", cpu_abi_register_names[i].c_str());
+
+        ImGui::NextColumn();
+
+        ImGui::Text("0x%016lX", core->register_64(i));
+
+        ImGui::NextColumn();
+    }
+
+    ImGui::Columns(1);
+
+    ImGui::Separator();
+
+    ImGui::Text("Program Counter (PC): 0x%016lX", pc);
+
+    ImGui::End();
 }
