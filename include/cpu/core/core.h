@@ -83,6 +83,35 @@ public:
         return register_;
     }
 
+    // Load binary file based on core configuration
+    void load_binary(const std::string& filePathName) {
+        if (riscv.has_value()) {
+            if (xlen == 32) {
+                auto riscv_32 = std::any_cast<RISCV<32, false>*>(&riscv);
+                if (riscv_32) {
+                    (*riscv_32)->bus.load_binary(filePathName);
+                } else {
+                    Logger::Instance().Error("Incompatible RISCV instance (expected 32-bit)");
+                    Risky::exit();
+                }
+            } else if (xlen == 64) {
+                auto riscv_64 = std::any_cast<RISCV<64, false>*>(&riscv);
+                if (riscv_64) {
+                    (*riscv_64)->bus.load_binary(filePathName);
+                } else {
+                    Logger::Instance().Error("Incompatible RISCV instance (expected 64-bit)");
+                    Risky::exit();
+                }
+            } else {
+                Logger::Instance().Error("Unsupported xlen");
+                Risky::exit();
+            }
+        } else {
+            Logger::Instance().Error("No RISCV instance assigned to Core");
+            Risky::exit();
+        }
+    }
+
     // Get the xlen value
     std::uint8_t get_xlen() const {
         return xlen;

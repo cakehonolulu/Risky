@@ -704,18 +704,7 @@ void ImGui_Risky::run() {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
-				if (core_.contains("RV32I"))
-				{
-					riscv_core_32->bus.load_binary(filePathName);
-				}
-				else if (core_.contains("RV32E"))
-				{
-					riscv_core_32e->bus.load_binary(filePathName);
-				}
-				else if (core_.contains("RV64I"))
-				{
-					riscv_core_64->bus.load_binary(filePathName);
-				}
+                core.load_binary(filePathName);
 			}
 
 			ImGuiFileDialog::Instance()->Close();
