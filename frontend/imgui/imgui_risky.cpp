@@ -570,6 +570,9 @@ void ImGui_Risky::imgui_registers_window_64(Core *core, bool *debug_window) {
 void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
     Disassembler disassembler;
 
+	static int selectedRegisterNames = 1;
+	const char* registerNameSets[] = { "RISC Naming", "ABI Naming" };
+
     ImGui::Text("PC:");
 
     ImGui::SameLine();
@@ -625,7 +628,11 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
         }
     }
 
-    ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
+	ImGui::SameLine();
+
+	ImGui::Combo("Register Names", &selectedRegisterNames, registerNameSets, IM_ARRAYSIZE(registerNameSets));
+
+	ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
 
     int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
 
@@ -647,7 +654,8 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
 		// Disassemble the instruction at the current PC
 		std::uint32_t opcode = core->bus_read32(currentPC);
-		std::string disassembly = disassembler.Disassemble(opcode);
+		const std::vector<std::string> *registerNames = (selectedRegisterNames == 0) ? &cpu_register_names : &cpu_abi_register_names;
+		std::string disassembly = disassembler.Disassemble(opcode, registerNames);
 
 		char opcodeBuffer[12];
 		snprintf(opcodeBuffer, sizeof(opcodeBuffer), "%02X %02X %02X %02X",
@@ -695,7 +703,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 					displayText = format("{} {}, {}, <{}>", opcode_dis, rd, rs, jumpSymbol->second.name);
 				}
 			} else {
-				displayText = format("{} {} {}", opcode_dis, rd, immediate);
+				displayText = format("{}", disassembly);
 			}
 		} else {
 			displayText = disassembly;

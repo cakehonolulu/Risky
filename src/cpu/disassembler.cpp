@@ -10,16 +10,16 @@ using std::format;
 using format;
 #endif
 
-std::string Disassembler::Disassemble(uint32_t opcode) {
+std::string Disassembler::Disassemble(uint32_t opcode, const std::vector<std::string> *regnames) {
     // Check if RV16 or RV32
     if ((opcode & 0x3) != 0x3) {
-        return DecodeRV16(static_cast<std::uint16_t>(opcode));
+        return DecodeRV16(static_cast<std::uint16_t>(opcode), regnames);
     } else {
-        return DecodeRV32(opcode);
+        return DecodeRV32(opcode, regnames);
     }
 }
 
-std::string Disassembler::DecodeRV16(uint16_t opcode) {
+std::string Disassembler::DecodeRV16(uint16_t opcode, const std::vector<std::string> *regnames) {
 	uint16_t funct3 = (opcode >> 13) & 0x7;
 	uint16_t imm = (opcode >> 2) & 0x1F;
 	uint16_t rd_rs1 = (opcode >> 7) & 0x1F;
@@ -30,14 +30,14 @@ std::string Disassembler::DecodeRV16(uint16_t opcode) {
 		if (rd_rs1 == 0 && imm == 0) {
 			return "c.nop";
 		} else {
-			return "c.addi " + std::string(cpu_register_names[rd_rs1]) + ", " + std::string(cpu_register_names[rd_rs1]) + ", " + std::to_string(static_cast<int8_t>(imm));
+			return "c.addi " + std::string(regnames->at(rd_rs1)) + ", " + std::string(regnames->at(rd_rs1)) + ", " + std::to_string(static_cast<int8_t>(imm));
 		}
 	}
 
 	return "UNKNOWN_RV16_OPCODE";
 }
 
-std::string Disassembler::DecodeRV32(uint32_t opcode) {
+std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::string> *regnames) {
     uint32_t funct3 = (opcode >> 12) & 0x7;
     uint32_t funct7 = (opcode >> 25) & 0x7F;
     uint32_t rd = (opcode >> 7) & 0x1F;
@@ -48,7 +48,7 @@ std::string Disassembler::DecodeRV32(uint32_t opcode) {
 
     switch (opcode & 0x7F) {
         case LUI: // LUI
-            return "lui " + std::string(cpu_register_names[rd]) + ", " + std::to_string(imm);
+            return "lui " + std::string(regnames->at(rd)) + ", " + std::to_string(imm);
 
         case MISCMEM:
             switch (funct3) {
@@ -57,38 +57,38 @@ std::string Disassembler::DecodeRV32(uint32_t opcode) {
             }
 
         case AUIPC: // AUIPC
-            return "auipc " + std::string(cpu_register_names[rd]) + ", " + std::to_string(imm);
+            return "auipc " + std::string(regnames->at(rd)) + ", " + std::to_string(imm);
         case JAL: // JAL
-            return "jal " + std::string(cpu_register_names[rd]) + ", " + std::to_string(imm);
+            return "jal " + std::string(regnames->at(rd)) + ", " + std::to_string(imm);
         case JALR: // JALR
-            return "jalr " + std::string(cpu_register_names[rd]) + ", " + std::string(cpu_register_names[rs1]) + ", " + std::to_string(imm);
+            return "jalr " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::to_string(imm);
         case SYSTEM: // SYSTEM
             switch (funct3) {
                 case 0x1:
-                    return "csrrw " + std::string(cpu_register_names[rd]) + ", " + get_csr_name(csr) + ", " + std::string(cpu_register_names[rs1]);
+                    return "csrrw " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " + std::string(regnames->at(rs1));
                 case 0x2:
-                    return "csrrs " + std::string(cpu_register_names[rd]) + ", " + get_csr_name(csr) + ", " + std::string(cpu_register_names[rs1]);
+                    return "csrrs " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " + std::string(regnames->at(rs1));
                 case 0x3:
-                    return "csrrc " + std::string(cpu_register_names[rd]) + ", " + get_csr_name(csr) + ", " + std::string(cpu_register_names[rs1]);
+                    return "csrrc " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " + std::string(regnames->at(rs1));
                 case 0x5:
-                    return "csrrsi " + std::string(cpu_register_names[rd]) + ", " + get_csr_name(csr) + ", " + std::to_string(rs1); // rs1 is an immediate value here
+                    return "csrrsi " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " + std::to_string(rs1); // rs1 is an immediate value here
             }
             break;
         case OPIMM: // OP-IMM
             if (funct3 == 0x0)
-                return "addi " + std::string(cpu_register_names[rd]) + ", " + std::string(cpu_register_names[rs1]) + ", " + std::to_string(imm);
+                return "addi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::to_string(imm);
             break;
         case BRANCH: // BRANCH
             switch (funct3) {
                 case 0x4:
-                    return "blt " + std::string(cpu_register_names[rs1]) + ", " + std::string(cpu_register_names[rs2]) + ", " + std::to_string(imm);
+                    return "blt " + std::string(regnames->at(rs1)) + ", " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm);
                 case 0x5:
-                    return "bge " + std::string(cpu_register_names[rs1]) + ", " + std::string(cpu_register_names[rs2]) + ", " + std::to_string(imm);
+                    return "bge " + std::string(regnames->at(rs1)) + ", " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm);
             }
             break;
         case STORE: // STORE
             if (funct3 == 0x2)
-                return "sw " + std::string(cpu_register_names[rs2]) + ", " + std::to_string(imm) + "(" + std::string(cpu_register_names[rs1]) + ")";
+                return "sw " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm) + "(" + std::string(regnames->at(rs1)) + ")";
             break;
     }
     return "UNKNOWN_OPCODE";
