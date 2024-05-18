@@ -84,8 +84,11 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
 	ImGui::SameLine();
 
+	static std::uint32_t startPC;
+
 	if (ImGui::Button("Jump")) {
 		core->set_pc_32(jumpToAddress);
+		startPC = std::any_cast<std::uint32_t>(core->pc());
 	}
 
 	ImGui::Separator();
@@ -114,6 +117,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 	{
 		if (ImGui::Button("Step")) {
 			core->step();
+			startPC = std::any_cast<std::uint32_t>(core->pc()) - 4;
 		}
 	}
 
@@ -132,17 +136,41 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 	ImGui::BeginChild("Disassembly", ImVec2(0, 0), true);
 
 	int numInstructions = ImGui::GetWindowHeight() / ImGui::GetTextLineHeight();
+	static bool initialized = false;
+	static float lastScrollY = 0.0f;
 
-	std::uint32_t currentPC;
+	// Initialize startPC with the current PC
+	std::uint32_t currentPC = std::any_cast<std::uint32_t>(core->pc());
+	if (!initialized) {
+		startPC = currentPC;
+		initialized = true;
+	}
 
-	std::uint32_t pc = std::any_cast<std::uint32_t>(core->pc());
+	// Adjust the startPC if scrolling past the current list
+	float scrollY = ImGui::GetScrollY();
+	float scrollMaxY = ImGui::GetScrollMaxY();
 
-	currentPC = pc;
+	// Use a threshold to adjust less aggressively
+	const float scrollThreshold = 5.0f;
+	const int scrollIncrement = 4 * 4;  // Adjust by 4 instructions (4 bytes each)
+
+	if (scrollY >= (scrollMaxY - scrollThreshold) && scrollY > lastScrollY) {
+		// Scrolling down past the bottom
+		startPC += scrollIncrement;
+		ImGui::SetScrollY(scrollMaxY - scrollThreshold - 1);  // Reset scroll to avoid continuous adjustment
+	} else if (scrollY <= scrollThreshold && scrollY < lastScrollY) {
+		// Scrolling up past the top
+		startPC = (startPC > scrollIncrement) ? (startPC - scrollIncrement) : 0;
+		ImGui::SetScrollY(scrollThreshold + 1);  // Reset scroll to avoid continuous adjustment
+	}
+
+	lastScrollY = scrollY;
+
 
 	std::vector<DisplayItem> displayItems;
 
 	for (int i = 0; i < numInstructions; ++i) {
-		currentPC = pc + i * 4;
+		currentPC = startPC + i * 4;
 
 		auto it = symbols.find(currentPC);
 		if (it != symbols.end()) {
@@ -162,7 +190,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 		         (opcode >> 0) & 0xFF);
 
 		bool isJumpInstruction = (disassembly.find("jal") != std::string::npos || disassembly.find("jalr") != std::string::npos);
-		bool isCurrentInstruction = (currentPC == pc);
+		bool isCurrentInstruction = (currentPC == std::any_cast<std::uint32_t>(core->pc()));
 
 		ImVec4 instructionColor = isCurrentInstruction ? ImVec4(1.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
