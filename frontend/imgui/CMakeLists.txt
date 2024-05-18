@@ -30,6 +30,7 @@ if(USE_IMGUI_FRONTEND)
             ${IMGUI_FILE_DIALOG_SOURCES}
             main.cpp
             imgui_risky.cpp
+            imgui_disassembler.cpp
             imgui_log.cpp
             imgui_exit.cpp)
 
