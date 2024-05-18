@@ -331,6 +331,36 @@ void ImGui_Risky::run() {
 		{
 			ImGui::Begin("RISC-V Core Configuration");
 
+			static const char* presetNames[] = { "None", "RV32I+C+Zifence+Zicsr", "Custom" };
+			static int selectedPreset = 0;
+
+			ImGui::Text("Presets:");
+			ImGui::Combo("##PresetsCombo", &selectedPreset, presetNames, IM_ARRAYSIZE(presetNames));
+
+			if (selectedPreset != 0) {
+				has_M_extension = false;
+				has_A_extension = false;
+				has_C_extension = false;
+				has_Zicsr_extension = false;
+				has_Zifence_extension = false;
+				nommu = true;
+
+				switch (selectedPreset) {
+					case 1:  // RV32I+C+Zifence+Zicsr
+						selected_riscv_variant = 0;
+						has_C_extension = true;
+						has_Zifence_extension = true;
+						has_Zicsr_extension = true;
+						break;
+					case 2:
+						break;
+					default:
+						break;
+				}
+			}
+
+			ImGui::Separator();
+
 			ImGui::Text("Base Integer Instruction Set:");
 			ImGui::RadioButton("RV32I", &selected_riscv_variant, 0);
 			ImGui::SameLine();
