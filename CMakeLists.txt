@@ -6,17 +6,18 @@ set(CXX_STANDARD_REQUIRED ON)
 
 # Option to choose the frontend (default: ImGui)
 option(USE_IMGUI_FRONTEND "Use ImGui frontend" ON)
+option(USE_RAYLIB_FRONTEND "Use RayLib frontend" OFF)
 option(USE_HEADLESS_FRONTEND "Use headless frontend" OFF)
 option(RUN_TESTS "Enable testing" OFF)
 
 # Both USE_IMGUI_FRONTEND and USE_HEADLESS_FRONTEND options can't be active at the same time, check against it
-if(USE_IMGUI_FRONTEND AND USE_HEADLESS_FRONTEND)
-    message(FATAL_ERROR "Can't enable ImGui and Headless frontends at the same time!")
+if(USE_IMGUI_FRONTEND AND USE_HEADLESS_FRONTEND AND USE_RAYLIB_FRONTEND)
+    message(FATAL_ERROR "Can't enable ImGui, Raylib and Headless frontends at the same time!")
 endif()
 
 # Check if there's one of the frontend options enabled
-if(NOT USE_IMGUI_FRONTEND AND NOT USE_HEADLESS_FRONTEND AND NOT RUN_TESTS)
-    message(FATAL_ERROR "No frontend selected, please enable ImGui, Headless frontend, or testing!")
+if(NOT USE_IMGUI_FRONTEND AND NOT USE_HEADLESS_FRONTEND AND NOT USE_RAYLIB_FRONTEND AND NOT RUN_TESTS)
+    message(FATAL_ERROR "No frontend selected, please enable ImGui, Raylib, Headless frontends, or testing!")
 endif()
 
 # Specify the main executable
@@ -29,8 +30,8 @@ add_subdirectory(src)
 if (RUN_TESTS)
     add_subdirectory(tests)
 else()
-    if(NOT USE_IMGUI_FRONTEND AND NOT USE_HEADLESS_FRONTEND)
-        message(FATAL_ERROR "No frontend selected, please enable ImGui or Headless frontend!")
+    if(NOT USE_IMGUI_FRONTEND AND NOT USE_HEADLESS_FRONTEND AND NOT USE_RAYLIB_FRONTEND)
+        message(FATAL_ERROR "No frontend selected, please enable ImGui, Raylib or Headless frontend!")
     else()
         add_subdirectory(frontend)
     endif()
