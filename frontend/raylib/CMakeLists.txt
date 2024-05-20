@@ -19,9 +19,11 @@ if(USE_RAYLIB_FRONTEND)
         endif()
     endif()
 
+    set(RAYGUI_VERSION 4.0)
+
     set(RAYGUI_DIR ${CMAKE_BINARY_DIR}/_deps/raygui-src)
     file(DOWNLOAD
-            https://raw.githubusercontent.com/raysan5/raygui/master/src/raygui.h
+            https://raw.githubusercontent.com/raysan5/raygui/${RAYGUI_VERSION}/src/raygui.h
             ${RAYGUI_DIR}/raygui.h
     )
 
