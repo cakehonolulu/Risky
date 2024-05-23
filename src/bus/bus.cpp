@@ -52,6 +52,11 @@ std::uint32_t Bus::read32(std::uint32_t address)
 				(main_memory[offset + 1] << 8) |
 				main_memory[offset + 0];
 	}
+    else if (address >= 0x7F000000 && address < (0x80000000 + main_memory_size))
+    {
+        // TODO: Minor hack for debugger not to exit
+        return 0x00000000;
+    }
 
 	std::stringstream errorMessage;
 	errorMessage << "[BUS] read32: Unhandled memory address: 0x"

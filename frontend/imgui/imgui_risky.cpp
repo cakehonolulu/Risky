@@ -3,11 +3,11 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
-#include "cpu/core/rv32i.h"
 #include "ImGuiFileDialog.h"
-#include "cpu/core/rv64i.h"
-#include "cpu/core/rv32e.h"
-#include "cpu/core/core.h"
+#include <cpu/core/rv32e.h>
+#include <cpu/core/rv32i.h>
+#include <cpu/core/rv64i.h>
+#include <cpu/core/core.h>
 #include <cstdio>
 #include <SDL3/SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -203,6 +203,11 @@ void ImGui_Risky::run() {
                             ImGuiFileDialog::Instance()->OpenDialog("SymbolsLoadDlg", "Choose File", ".map", config);
                         }
                     }
+
+                    if (ImGui::MenuItem("Load ELF File")) {
+                        ImGuiFileDialog::Instance()->OpenDialog("ElfLoadDlg", "Choose File", ".elf", config);
+                    }
+
 
                     ImGui::EndMenu();
                 }
@@ -499,6 +504,17 @@ void ImGui_Risky::run() {
 
                 symbols = parse_symbols_linux_map(filePathName);
                 symbols_loaded = true;
+            }
+
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+        if (ImGuiFileDialog::Instance()->Display("ElfLoadDlg")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+
+                core.load_elf(filePathName);
             }
 
             ImGuiFileDialog::Instance()->Close();
