@@ -43,7 +43,17 @@ void Bus::load_binary(const std::string& binary_path)
 
 std::uint8_t Bus::read8(std::uint32_t address)
 {
-	if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
+	if (address == UART_THR)
+	{
+		Logger::Instance().Log("[MEM] read8: Read from UART_THR");
+		return 0x00;
+	}
+	else if (address == UART_LSR)
+	{
+		Logger::Instance().Log("[MEM] read8: Read from UART_LSR");
+		return 0x60;
+	}
+	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
 	{
 		std::size_t offset = address - 0x80000000;
 
@@ -60,7 +70,7 @@ std::uint8_t Bus::read8(std::uint32_t address)
 	             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
 
 	Logger::Instance().Error(errorMessage.str());
-	//Risky::exit();
+	Risky::exit();
 	return 0x00;
 }
 
@@ -88,6 +98,29 @@ std::uint32_t Bus::read32(std::uint32_t address)
 	Logger::Instance().Error(errorMessage.str());
 	Risky::exit();
 	return 0x00000000;
+}
+
+void Bus::write8(std::uint32_t address, std::uint8_t value)
+{
+	if (address == UART_THR)
+	{
+		Logger::Instance().Log("[UART] " + value);
+	}
+	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
+	{
+		std::size_t offset = address - 0x80000000;
+
+		main_memory[offset] = static_cast<std::uint8_t>(value);
+	}
+	else
+	{
+		std::stringstream errorMessage;
+		errorMessage << "[BUS] write8: Unhandled memory address: 0x"
+		             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
+
+		Logger::Instance().Error(errorMessage.str());
+		Risky::exit();
+	}
 }
 
 void Bus::write32(std::uint32_t address, std::uint32_t value)

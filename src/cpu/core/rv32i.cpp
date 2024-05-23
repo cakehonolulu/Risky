@@ -1,4 +1,5 @@
 #include <cpu/core/rv32i.h>
+#include <cpu/registers.h>
 #include <cstring>
 
 RV32I::RV32I(const std::vector<std::string>& extensions)
@@ -99,6 +100,9 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                     case 0b000:
                         rv32i_addi(opcode);
                         break;
+	                case 0b111:
+		                rv32i_andi(opcode);
+		                break;
                     default:
                         unknown_immediate_opcode(funct3);
                         break;
@@ -107,6 +111,9 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
             case STORE:
                 switch (funct3) {
+	                case 0b000:
+		                rv32i_sb(opcode);
+		                break;
                     case 0b010:
                         rv32i_sw(opcode);
                         break;
@@ -118,7 +125,11 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
             case BRANCH:
                 switch (funct3) {
-					case 0b001:
+					case 0b000:
+		                rv32i_beq(opcode);
+		                break;
+
+	                case 0b001:
 						rv32i_bne(opcode);
 						break;
 
@@ -346,23 +357,35 @@ void RV32I::rv32i_jalr(std::uint32_t opcode) {
 void RV32I::rv32i_lw(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
-	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+	std::int32_t imm = static_cast<int32_t>(opcode) >> 20;
 
 	uint32_t effective_address = registers[rs1] + imm;
 
 	uint32_t loaded_value = bus.read32(effective_address);
 
 	registers[rd] = loaded_value;
+
+	std::stringstream debugInfo;
+	debugInfo << "LW: Loaded value 0x" << std::hex << loaded_value
+	          << " from memory address 0x" << effective_address
+	          << " into register " << cpu_abi_register_names[static_cast<int>(rd)];
+
+	Logger::Instance().Log(debugInfo.str());
 }
 
 void RV32I::rv32i_lbu(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
-	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+	std::int32_t imm = static_cast<int32_t>(opcode) >> 20;
 
 	uint32_t effective_address = registers[rs1] + imm;
 
 	uint8_t loaded_byte = bus.read8(effective_address);
+
+	std::stringstream debugInfo;
+	debugInfo << "LBU: Loaded byte 0x" << format("{:02X}", loaded_byte)
+	          << " from memory address 0x" << format("{:08X}", effective_address) << " into register " << cpu_abi_register_names[static_cast<int>(rd)];
+	Logger::Instance().Log(debugInfo.str());
 
 	registers[rd] = static_cast<uint32_t>(static_cast<int32_t>(loaded_byte));
 }
@@ -443,7 +466,36 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 	registers[rd] = registers[rs1] + imm;
 }
 
+void RV32I::rv32i_andi(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	auto imm = static_cast<std::int32_t>(static_cast<std::int32_t>(opcode) >> 20);
+
+	std::uint32_t result = registers[rs1] & imm;
+
+	registers[rd] = result;
+}
+
 // BRANCH
+void RV32I::rv32i_beq(std::uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+	// Immediate value is spread across different parts of the instruction
+	std::int32_t imm_12 = (opcode >> 31) & 0x1;
+	std::int32_t imm_10_5 = (opcode >> 25) & 0x3F;
+	std::int32_t imm_4_1 = (opcode >> 8) & 0xF;
+	std::int32_t imm_11 = (opcode >> 7) & 0x1;
+
+	// Combining the immediate parts and adjusting for sign extension
+	std::int32_t imm = (imm_12 << 12) | (imm_11 << 11) | (imm_10_5 << 5) | (imm_4_1 << 1);
+	imm = (imm << 19) >> 19;  // Sign extend to 32 bits
+
+	if (registers[rs1] == registers[rs2]) {
+		pc += imm - 4;
+	}
+}
+
 void RV32I::rv32i_bne(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
@@ -459,7 +511,7 @@ void RV32I::rv32i_bne(std::uint32_t opcode) {
 	imm = (imm << 19) >> 19;  // Sign extend to 32 bits
 
 	if (registers[rs1] != registers[rs2]) {
-		pc += imm;
+		pc += imm - 4;
 	}
 }
 
@@ -487,6 +539,27 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 }
 
 // STORE
+void RV32I::rv32i_sb(uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+	int32_t imm_11_5 = (opcode >> 25) & 0x7F;
+	int32_t imm_4_0 = (opcode >> 7) & 0x1F;
+	int32_t imm = (imm_11_5 << 5) | imm_4_0;
+	imm = (imm << 20) >> 20;
+
+	uint32_t effective_address = registers[rs1] + imm;
+
+	bus.write8(effective_address, registers[rs2] & 0xFF);
+
+	std::stringstream debugInfo;
+	debugInfo << "SB: Stored value 0x" << std::hex << (registers[rs2] & 0xFF)
+	          << " from register " << std::dec << static_cast<int>(rs2)
+	          << " to memory address 0x" << std::hex << effective_address;
+
+	Logger::Instance().Log(debugInfo.str());
+}
+
 void RV32I::rv32i_sw(uint32_t opcode) {
 	std::uint32_t imm_11_5 = (opcode >> 25) & 0x7F;
 	std::uint32_t imm_4_0 = (opcode >> 7) & 0x1F;

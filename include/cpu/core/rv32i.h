@@ -45,13 +45,16 @@ private:
 
 	// OP-IMM
 	void rv32i_addi(std::uint32_t opcode);
+	void rv32i_andi(std::uint32_t opcode);
 
 	// BRANCH
+	void rv32i_beq(std::uint32_t opcode);
 	void rv32i_bne(std::uint32_t opcode);
 	void rv32i_blt(std::uint32_t opcode);
 	void rv32i_bge(std::uint32_t opcode);
 
 	// STORE
+	void rv32i_sb(std::uint32_t opcode);
 	void rv32i_sw(std::uint32_t opcode);
 
 	// SYSTEM

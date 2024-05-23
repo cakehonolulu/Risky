@@ -92,9 +92,14 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 		    }
 		    break;
 	    case OPIMM: // OP-IMM
-		    if (funct3 == 0x0)
-			    return "addi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
-			           std::to_string(imm);
+		    switch (funct3) {
+			    case 0x0: // ADDI
+				    return "addi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+				           std::to_string(imm);
+			    case 0x7: // ANDI
+				    return "andi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+				           std::to_string(imm);
+		    }
 		    break;
 	    case BRANCH: // BRANCH
 		    switch (funct3) {
@@ -119,15 +124,28 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 		    }
 		    break;
 	    case STORE: // STORE
-		    if (funct3 == 0x2)
-		    {
-			    int32_t imm_11_5 = (opcode >> 25) & 0x7F;
-			    int32_t imm_4_0 = (opcode >> 7) & 0x1F;
-			    int32_t imm_store = (imm_11_5 << 5) | imm_4_0;
-			    imm_store = (imm_store << 20) >> 20;
-			    return "sw " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm_store) + "(" +
-			           std::string(regnames->at(rs1)) + ")";
-            }
+			switch (funct3)
+			{
+				case 0x00:
+				{
+					int32_t imm_11_5 = (opcode >> 25) & 0x7F;
+					int32_t imm_4_0 = (opcode >> 7) & 0x1F;
+					int32_t imm_store = (imm_11_5 << 5) | imm_4_0;
+					imm_store = (imm_store << 20) >> 20;
+					return "sb " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm_store) + "(" +
+					       std::string(regnames->at(rs1)) + ")";
+				}
+
+				case 0x02:
+				{
+					int32_t imm_11_5 = (opcode >> 25) & 0x7F;
+					int32_t imm_4_0 = (opcode >> 7) & 0x1F;
+					int32_t imm_store = (imm_11_5 << 5) | imm_4_0;
+					imm_store = (imm_store << 20) >> 20;
+					return "sw " + std::string(regnames->at(rs2)) + ", " + std::to_string(imm_store) + "(" +
+					       std::string(regnames->at(rs1)) + ")";
+				}
+			}
 			break;
     }
     return "UNKNOWN_OPCODE";
