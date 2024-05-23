@@ -11,6 +11,7 @@
 
 #define EMBEDDED true
 
+#define LOAD    0b0000011
 #define MISCMEM 0b0001111
 #define OPIMM   0b0010011
 #define STORE   0b0100011

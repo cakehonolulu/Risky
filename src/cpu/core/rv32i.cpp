@@ -65,7 +65,21 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                 rv32i_lui(opcode);
                 break;
 
-            case MISCMEM:
+	        case LOAD:
+		        switch (funct3) {
+			        case 0b010:
+				        rv32i_lw(opcode);
+				        break;
+			        case 0b100:
+				        rv32i_lbu(opcode);
+				        break;
+			        default:
+				        unknown_load_opcode(funct3);
+				        break;
+		        }
+		        break;
+
+	        case MISCMEM:
                 switch (funct3) {
                     case 0b001:
                         if (has_zifence) {
@@ -211,6 +225,15 @@ void RV32I::unknown_zicsr_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_load_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented LOAD opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
 void RV32I::unknown_miscmem_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented MISC-MEM opcode: 0b" << format("{:08b}", funct3);
@@ -275,7 +298,8 @@ void RV32I::rv32i_caddi(std::uint16_t opcode) {
 // AIUPC
 void RV32I::rv32i_auipc(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
-	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFFFF000) >> 12);
+
+	std::uint32_t imm = opcode & 0xFFFFF000;
 
 	std::uint32_t result = pc + imm;
 
@@ -317,6 +341,30 @@ void RV32I::rv32i_jalr(std::uint32_t opcode) {
 
 	registers[rd] = pc + 4;
 	pc = target_address;
+}
+
+void RV32I::rv32i_lw(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+
+	uint32_t effective_address = registers[rs1] + imm;
+
+	uint32_t loaded_value = bus.read32(effective_address);
+
+	registers[rd] = loaded_value;
+}
+
+void RV32I::rv32i_lbu(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+
+	uint32_t effective_address = registers[rs1] + imm;
+
+	uint8_t loaded_byte = bus.read8(effective_address);
+
+	registers[rd] = static_cast<uint32_t>(static_cast<int32_t>(loaded_byte));
 }
 
 void RV32I::rv32i_csrrw(std::uint32_t opcode) {
@@ -440,11 +488,16 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 
 // STORE
 void RV32I::rv32i_sw(uint32_t opcode) {
+	std::uint32_t imm_11_5 = (opcode >> 25) & 0x7F;
+	std::uint32_t imm_4_0 = (opcode >> 7) & 0x1F;
+	std::uint32_t imm = (imm_11_5 << 5) | imm_4_0;
+
+	std::int32_t signed_imm = (imm & (1 << 11)) ? (imm | ~((1 << 12) - 1)) : imm;
+
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
-	std::int32_t imm = (static_cast<std::int32_t>(opcode) >> 20);
 
-	uint32_t effective_address = registers[rs1] + imm;
+	uint32_t effective_address = registers[rs1] + signed_imm;
+
 	bus.write32(effective_address, registers[rs2]);
 }
-

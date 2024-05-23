@@ -9,6 +9,7 @@ public:
     void unknown_rv16_opcode(std::uint16_t opcode);
     void unknown_rv32_opcode(std::uint32_t opcode);
 	void unknown_zicsr_opcode(std::uint8_t funct3);
+	void unknown_load_opcode(std::uint8_t funct3);
 	void unknown_miscmem_opcode(std::uint8_t funct3);
 	void unknown_branch_opcode(std::uint8_t funct3);
 	void unknown_store_opcode(std::uint8_t funct3);
@@ -34,6 +35,10 @@ private:
 
 	// JALR
 	void rv32i_jalr(std::uint32_t opcode);
+
+	// LOAD
+	void rv32i_lw(std::uint32_t opcode);
+	void rv32i_lbu(std::uint32_t opcode);
 
 	// MISC-MEM
 	void rv32i_fence_i(std::uint32_t opcode);

@@ -17,6 +17,7 @@ public:
 
 	void load_binary(const std::string& binary_path);
 
+	std::uint8_t read8(std::uint32_t address);
 	std::uint32_t read32(std::uint32_t address);
 	void write32(uint32_t address, uint32_t value);
 };

@@ -41,6 +41,29 @@ void Bus::load_binary(const std::string& binary_path)
 	binary_file.close();
 }
 
+std::uint8_t Bus::read8(std::uint32_t address)
+{
+	if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
+	{
+		std::size_t offset = address - 0x80000000;
+
+		return main_memory[offset];
+	}
+	else if (address >= 0x7F000000 && address < (0x80000000 + main_memory_size))
+	{
+		// TODO: Minor hack for debugger not to exit
+		return 0x00;
+	}
+
+	std::stringstream errorMessage;
+	errorMessage << "[BUS] read8: Unhandled memory address: 0x"
+	             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
+
+	Logger::Instance().Error(errorMessage.str());
+	//Risky::exit();
+	return 0x00;
+}
+
 std::uint32_t Bus::read32(std::uint32_t address)
 {
 	if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))

@@ -50,6 +50,17 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 	    case LUI: // LUI
 		    return "lui " + std::string(regnames->at(rd)) + ", " + std::to_string(imm);
 
+		case LOAD:
+			switch (funct3) {
+				case 0x2: // LW
+					return "lw " + std::string(regnames->at(rd)) + ", " + std::to_string(imm) + "(" +
+					       std::string(regnames->at(rs1)) + ")";
+				case 0x4: // LBU
+					return "lbu " + std::string(regnames->at(rd)) + ", " + std::to_string(imm) + "(" +
+					       std::string(regnames->at(rs1)) + ")";
+			}
+		    break;
+
 	    case MISCMEM:
 		    switch (funct3) {
 			    case 0b001:
