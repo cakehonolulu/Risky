@@ -9,6 +9,7 @@ template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 		: extensions(extensions), pc(0x80000000) {
 	std::memset(registers, 0, sizeof(registers));
+	std::memset(csrs, 0, sizeof(csrs));
 	has_a = false;
 	has_m = false;
 	has_zicsr = false;

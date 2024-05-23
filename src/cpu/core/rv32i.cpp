@@ -104,6 +104,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
             case BRANCH:
                 switch (funct3) {
+					case 0b001:
+						rv32i_bne(opcode);
+						break;
+
                     case 0b100:
                         rv32i_blt(opcode);
                         break;
@@ -290,14 +294,18 @@ void RV32I::rv32i_lui(std::uint32_t opcode) {
 void RV32I::rv32i_jal(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 
-	int32_t imm =
-			static_cast<int32_t> (((opcode >> 31) & 0x1) << 20 |
-			                      ((opcode >> 21) & 0x3FF) << 1 |
-			                      ((opcode >> 20) & 0x1)) << 11 >> 11;
+	std::int32_t imm_20 = (opcode >> 31) & 0x1;
+	std::int32_t imm_10_1 = (opcode >> 21) & 0x3FF;
+	std::int32_t imm_11 = (opcode >> 20) & 0x1;
+	std::int32_t imm_19_12 = (opcode >> 12) & 0xFF;
+
+	std::int32_t imm = (imm_20 << 20) | (imm_19_12 << 12) | (imm_11 << 11) | (imm_10_1 << 1);
+
+	imm = (imm << 11) >> 11;
 
 	registers[rd] = pc + 4;
 
-	pc = (pc + imm);
+	pc += imm - 4;
 }
 
 void RV32I::rv32i_jalr(std::uint32_t opcode) {
@@ -388,6 +396,25 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 }
 
 // BRANCH
+void RV32I::rv32i_bne(std::uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+	// Immediate value is spread across different parts of the instruction
+	std::int32_t imm_12 = (opcode >> 31) & 0x1;
+	std::int32_t imm_10_5 = (opcode >> 25) & 0x3F;
+	std::int32_t imm_4_1 = (opcode >> 8) & 0xF;
+	std::int32_t imm_11 = (opcode >> 7) & 0x1;
+
+	// Combining the immediate parts and adjusting for sign extension
+	std::int32_t imm = (imm_12 << 12) | (imm_11 << 11) | (imm_10_5 << 5) | (imm_4_1 << 1);
+	imm = (imm << 19) >> 19;  // Sign extend to 32 bits
+
+	if (registers[rs1] != registers[rs2]) {
+		pc += imm;
+	}
+}
+
 void RV32I::rv32i_blt(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
@@ -398,9 +425,6 @@ void RV32I::rv32i_blt(std::uint32_t opcode) {
 		uint32_t target_address = pc + imm;
 		// Set the PC to the branch target address
 		pc = target_address;
-	} else {
-		// Increment PC by 4 (skip the branch instruction)
-		pc += 4;
 	}
 }
 
@@ -411,8 +435,6 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 
 	if (static_cast<std::int32_t>(registers[rs1]) >= static_cast<std::int32_t>(registers[rs2])) {
 		pc += imm;
-	} else {
-		pc += 4;
 	}
 }
 
