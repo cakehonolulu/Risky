@@ -28,14 +28,25 @@ void Bus::load_binary(const std::string& binary_path)
 	}
 
 	const uint32_t binary_base_addr = 0x00000000;
-	const uint32_t binary_end_addr = binary_base_addr + 0x0003FFFF;
 	uint32_t offset = binary_base_addr;
 
-	while (!binary_file.eof() && offset <= binary_end_addr) {
-		char byte;
-		binary_file.read(&byte, 1);
-		main_memory[offset] = static_cast<uint8_t>(byte);
-		offset++;
+	// Seek to the end to get the file size
+	binary_file.seekg(0, std::ios::end);
+	std::streampos file_size = binary_file.tellg();
+	binary_file.seekg(0, std::ios::beg);
+
+	// Allocate buffer to read the entire file
+	std::vector<char> buffer(static_cast<size_t>(file_size));
+
+	// Read the entire file into the buffer
+	if (binary_file.read(buffer.data(), file_size)) {
+		for (size_t i = 0; i < static_cast<size_t>(file_size); ++i) {
+			main_memory[offset] = static_cast<uint8_t>(buffer[i]);
+			offset++;
+		}
+	} else {
+		Logger::Instance().Error("[BUS] Failed to read the binary file: " + binary_path);
+		Risky::exit();
 	}
 
 	binary_file.close();
