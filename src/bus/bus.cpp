@@ -45,12 +45,12 @@ std::uint8_t Bus::read8(std::uint32_t address)
 {
 	if (address == UART_THR)
 	{
-		Logger::Instance().Log("[MEM] read8: Read from UART_THR");
+		//Logger::Instance().Log("[MEM] read8: Read from UART_THR");
 		return 0x00;
 	}
 	else if (address == UART_LSR)
 	{
-		Logger::Instance().Log("[MEM] read8: Read from UART_LSR");
+		//Logger::Instance().Log("[MEM] read8: Read from UART_LSR");
 		return 0x60;
 	}
 	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
@@ -104,7 +104,7 @@ void Bus::write8(std::uint32_t address, std::uint8_t value)
 {
 	if (address == UART_THR)
 	{
-		Logger::Instance().Log("[UART] " + value);
+        Logger::Instance().Uart(value);
 	}
 	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
 	{

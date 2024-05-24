@@ -332,6 +332,32 @@ void ImGui_Risky::run() {
             }
 		}
 
+        if (true)
+        {
+            ImGui::Begin("UART Console");
+
+            const std::vector<uint8_t>& uartData = ImGuiLogger::GetImGuiUARTBuffer();
+            std::string currentLine; // Store characters until a newline is encountered
+            for (const auto& byte : uartData) {
+                if (byte == '\n') {
+                    // Output the current line
+                    ImGui::Text("%s", currentLine.c_str());
+                    // Clear the line for the next iteration
+                    currentLine.clear();
+                } else {
+                    // Add the character to the current line
+                    currentLine += byte;
+                }
+            }
+
+            // Output any remaining characters if the last line doesn't end with a newline
+            if (!currentLine.empty()) {
+                ImGui::Text("%s", currentLine.c_str());
+            }
+
+            ImGui::End();
+        }
+
 		if (core_config_window)
 		{
 			ImGui::Begin("RISC-V Core Configuration");
@@ -490,7 +516,10 @@ void ImGui_Risky::run() {
 				} else if (level == LogLevel::Warning) {
 					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", message.c_str());
 				} else {
-					ImGui::TextUnformatted(message.c_str());
+                    if (level != LogLevel::Uart)
+                    {
+                        ImGui::TextUnformatted(message.c_str());
+                    }
 				}
 			}
 

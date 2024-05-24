@@ -351,7 +351,7 @@ void RV32I::rv32i_jalr(std::uint32_t opcode) {
 	std::int32_t target_address = (registers[rs1] + imm) & ~1;
 
 	registers[rd] = pc + 4;
-	pc = target_address;
+	pc = target_address - 4;
 }
 
 void RV32I::rv32i_lw(std::uint32_t opcode) {
@@ -364,13 +364,6 @@ void RV32I::rv32i_lw(std::uint32_t opcode) {
 	uint32_t loaded_value = bus.read32(effective_address);
 
 	registers[rd] = loaded_value;
-
-	std::stringstream debugInfo;
-	debugInfo << "LW: Loaded value 0x" << std::hex << loaded_value
-	          << " from memory address 0x" << effective_address
-	          << " into register " << cpu_abi_register_names[static_cast<int>(rd)];
-
-	Logger::Instance().Log(debugInfo.str());
 }
 
 void RV32I::rv32i_lbu(std::uint32_t opcode) {
@@ -381,11 +374,6 @@ void RV32I::rv32i_lbu(std::uint32_t opcode) {
 	uint32_t effective_address = registers[rs1] + imm;
 
 	uint8_t loaded_byte = bus.read8(effective_address);
-
-	std::stringstream debugInfo;
-	debugInfo << "LBU: Loaded byte 0x" << format("{:02X}", loaded_byte)
-	          << " from memory address 0x" << format("{:08X}", effective_address) << " into register " << cpu_abi_register_names[static_cast<int>(rd)];
-	Logger::Instance().Log(debugInfo.str());
 
 	registers[rd] = static_cast<uint32_t>(static_cast<int32_t>(loaded_byte));
 }
@@ -551,13 +539,6 @@ void RV32I::rv32i_sb(uint32_t opcode) {
 	uint32_t effective_address = registers[rs1] + imm;
 
 	bus.write8(effective_address, registers[rs2] & 0xFF);
-
-	std::stringstream debugInfo;
-	debugInfo << "SB: Stored value 0x" << std::hex << (registers[rs2] & 0xFF)
-	          << " from register " << std::dec << static_cast<int>(rs2)
-	          << " to memory address 0x" << std::hex << effective_address;
-
-	Logger::Instance().Log(debugInfo.str());
 }
 
 void RV32I::rv32i_sw(uint32_t opcode) {

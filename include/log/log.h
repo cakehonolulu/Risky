@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <functional>
+#include <cstdint>
 #include <risky.h>
 
 enum class LogLevel
@@ -10,7 +11,8 @@ enum class LogLevel
 	Info,
 	Warning,
 	Error,
-	Debug
+	Debug,
+    Uart
 };
 
 class Logger
@@ -36,6 +38,11 @@ public:
 	{
 		warn = std::move(customWarnFunction);
 	}
+
+    void SetUARTFunction(std::function<void(std::uint8_t)> customUARTFunction)
+    {
+        uart = std::move(customUARTFunction);
+    }
 
 	void Log(const std::string& message)
 	{
@@ -73,8 +80,22 @@ public:
 		}
 	}
 
+    void Uart(std::uint8_t byte)
+    {
+        if (uart)
+        {
+            uart(byte);
+        }
+        else
+        {
+            uartBuffer.push_back(byte);
+        }
+    }
+
 private:
 	std::function<void(const std::string&)> log;
 	std::function<void(const std::string&)> error;
 	std::function<void(const std::string&)> warn;
+    std::function<void(std::uint8_t)> uart;
+    std::vector<std::uint8_t> uartBuffer;
 };

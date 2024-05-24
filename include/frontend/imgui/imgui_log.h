@@ -13,14 +13,15 @@ namespace ImGuiLogger
 	// Initialize ImGui Logger
 	void InitializeImGuiLogger();
 
-	// ImGui-specific setup and rendering code...
-
-	// Example of using ImGui Logger
-	void ImGuiSpecificCode();
-
 	// Access the ImGui log buffer
 	const std::vector<std::pair<std::string, LogLevel>>& GetImGuiLogBuffer();
 
+    // Access the ImGui UART buffer
+    const std::vector<uint8_t>& GetImGuiUARTBuffer();
+
 	// Clear the ImGui log buffer
 	void ClearImGuiLogBuffer();
+
+    // Clear the ImGui UART buffer
+    void ClearImGuiUARTBuffer();
 }
