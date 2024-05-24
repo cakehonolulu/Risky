@@ -1,6 +1,26 @@
 #include <frontend/imgui/imgui_risky.h>
 #include <cpu/registers.h>
 #include <cpu/disassembler.h>
+#include <thread>
+
+static std::thread stepThread;
+static bool stopThread = false;
+
+void StartStepThread(Core* core) {
+	stopThread = false;
+	stepThread = std::thread([core]() {
+		while (!stopThread) {
+			core->step();
+		}
+	});
+}
+
+void StopStepThread() {
+	stopThread = true;
+	if (stepThread.joinable()) {
+		stepThread.join();
+	}
+}
 
 void ImGui_Risky::imgui_registers_window_32(Core *core, bool *debug_window) {
 	ImGui::Begin("CPU Registers", debug_window);
@@ -99,9 +119,22 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 		ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
 		ImGui::PopStyleVar(2);
 	} else {
-		if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
-			core->run();
+		if (core->isRunning()) {
+			if (ImGui::Button("Stop")) {
+				core->stop();
+				StopStepThread();
+			}
+		} else {
+			if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
+				core->run();
+				StartStepThread(core);
+			}
 		}
+	}
+
+	if (core->isRunning()) {
+		startPC = std::any_cast<std::uint32_t>(core->pc());
+		ImGui::SetScrollY(0);
 	}
 
 	ImGui::SameLine();

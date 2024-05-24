@@ -35,6 +35,9 @@ public:
 
 	std::function<void()> step;
 	void run();
+	void step_();
+	void stop();
+	bool isRunning() const { return running; }
 	void reset();
 
 	void set_step_func(std::function<void()> step_func);
@@ -91,6 +94,7 @@ public:
 	bool has_zicsr;
 	bool has_zifence;
     bool has_compressed;
+	bool running = false;
 
 private:
 	std::vector<std::string> extensions;

@@ -22,8 +22,10 @@ public:
     std::function<std::uint32_t(std::uint32_t)> bus_read32;
     std::function<void(std::uint32_t, std::uint32_t)> bus_write32;
     std::function<void()> step;
+	std::function<void()> stop;
     std::function<void()> reset;
     std::function<void()> run;
+	std::function<bool()> isRunning;
 
     // Assign a new RISCV instance to Core
     template <std::uint8_t xlen, bool is_embedded>
@@ -34,6 +36,8 @@ public:
         step = [riscv]() { riscv->step(); };
         reset = [riscv]() { riscv->reset(); };
         run = [riscv]() { riscv->run(); };
+	    stop = [riscv]() { riscv->stop(); };
+	    isRunning = [riscv]() { return riscv->isRunning(); };
 
         if constexpr (xlen == 32) {
             pc = [riscv]() -> std::any { return std::any(riscv->pc); };

@@ -36,9 +36,19 @@ RISCV<xlen, is_embedded>::~RISCV() {}
 
 template <std::uint8_t xlen, bool is_embedded>
 void RISCV<xlen, is_embedded>::run() {
-	while (true) {
+	running = true;
+}
+
+template <std::uint8_t xlen, bool is_embedded>
+void RISCV<xlen, is_embedded>::step_() {
+	if (running) {
 		step();
 	}
+}
+
+template <std::uint8_t xlen, bool is_embedded>
+void RISCV<xlen, is_embedded>::stop() {
+	running = false;
 }
 
 template <std::uint8_t xlen, bool is_embedded>
