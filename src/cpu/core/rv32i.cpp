@@ -348,10 +348,15 @@ void RV32I::rv32i_jalr(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::int32_t imm = static_cast<std::int32_t>((opcode >> 20) & 0xFFF);
 
-	std::int32_t target_address = (registers[rs1] + imm) & ~1;
+	std::int32_t sign_extended_imm = (imm & (1 << 11)) ? (imm | ~((1 << 12) - 1)) : imm;
 
-	registers[rd] = pc + 4;
+	std::int32_t temp = pc + 4;
+
+	std::int32_t target_address = (registers[rs1] + sign_extended_imm) & ~1;
+
 	pc = target_address - 4;
+
+	registers[rd] = temp;
 }
 
 void RV32I::rv32i_lw(std::uint32_t opcode) {
@@ -519,10 +524,19 @@ void RV32I::rv32i_blt(std::uint32_t opcode) {
 void RV32I::rv32i_bge(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
-	std::int32_t imm = static_cast<std::int32_t>((opcode & 0xFFF00000) >> 20);
+
+	// Immediate value is spread across different parts of the instruction
+	std::int32_t imm_12 = (opcode >> 31) & 0x1;
+	std::int32_t imm_10_5 = (opcode >> 25) & 0x3F;
+	std::int32_t imm_4_1 = (opcode >> 8) & 0xF;
+	std::int32_t imm_11 = (opcode >> 7) & 0x1;
+
+	// Combining the immediate parts and adjusting for sign extension
+	std::int32_t imm = (imm_12 << 12) | (imm_11 << 11) | (imm_10_5 << 5) | (imm_4_1 << 1);
+	imm = (imm << 19) >> 19;  // Sign extend to 32 bits
 
 	if (static_cast<std::int32_t>(registers[rs1]) >= static_cast<std::int32_t>(registers[rs2])) {
-		pc += imm;
+		pc += imm - 4;
 	}
 }
 
