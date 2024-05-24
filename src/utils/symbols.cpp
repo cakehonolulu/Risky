@@ -3,12 +3,12 @@
 #include <log/log.h>
 #include <utils/symbols.h>
 
-std::unordered_map<std::uint32_t, Symbol> parse_symbols_linux_map(const std::string& filename) {
+std::unordered_map<std::uint32_t, Symbol> parse_symbols_map(const std::string& filename) {
     std::unordered_map<std::uint32_t, Symbol> symbols;
     std::ifstream file(filename);
 
     if (!file.is_open()) {
-        Logger::Instance().Error("[SYMBOLS] parse_symbols_linux_map: Failed to open " + filename);
+        Logger::Instance().Error("[SYMBOLS] parse_symbols_map: Failed to open " + filename);
         Risky::exit();
     }
 
@@ -26,6 +26,6 @@ std::unordered_map<std::uint32_t, Symbol> parse_symbols_linux_map(const std::str
         symbols[address] = { address, type, name };
     }
 
-    Logger::Instance().Log("[SYMBOLS] parse_symbols_linux_map: Symbols parsed");
+    Logger::Instance().Log("[SYMBOLS] parse_symbols_map: Symbols parsed");
     return symbols;
 }

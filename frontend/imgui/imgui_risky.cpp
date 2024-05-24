@@ -185,7 +185,11 @@ void ImGui_Risky::run() {
             {
                 if (ImGui::BeginMenu("File"))
                 {
-                    if (ImGui::MenuItem("Open Binary", ""))
+	                if (ImGui::MenuItem("Load ELF")) {
+		                ImGuiFileDialog::Instance()->OpenDialog("ElfLoadDlg", "Choose File", ".elf", config);
+	                }
+
+	                if (ImGui::MenuItem("Load Binary", ""))
                     {
                         if (core_.empty())
                         {
@@ -203,11 +207,6 @@ void ImGui_Risky::run() {
                             ImGuiFileDialog::Instance()->OpenDialog("SymbolsLoadDlg", "Choose File", ".map", config);
                         }
                     }
-
-                    if (ImGui::MenuItem("Load ELF File")) {
-                        ImGuiFileDialog::Instance()->OpenDialog("ElfLoadDlg", "Choose File", ".elf", config);
-                    }
-
 
                     ImGui::EndMenu();
                 }
@@ -531,7 +530,7 @@ void ImGui_Risky::run() {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
-                symbols = parse_symbols_linux_map(filePathName);
+                symbols = parse_symbols_map(filePathName);
                 symbols_loaded = true;
             }
 

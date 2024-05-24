@@ -10,4 +10,4 @@ struct Symbol {
     std::string name;
 };
 
-std::unordered_map<std::uint32_t, Symbol> parse_symbols_linux_map(const std::string& filename);
+std::unordered_map<std::uint32_t, Symbol> parse_symbols_map(const std::string& filename);
