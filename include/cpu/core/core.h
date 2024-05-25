@@ -232,6 +232,7 @@ private:
 	bool stopConditionMet() {
 		// Check if requested_exit flag is set
 		if (Risky::requested_exit) {
+			is_running = false;
 			return true;
 		}
 		return false;
