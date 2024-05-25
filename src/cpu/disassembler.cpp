@@ -89,6 +89,9 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 			    case 0x5:
 				    return "csrrsi " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " +
 				           std::to_string(rs1); // rs1 is an immediate value here
+			    case 0x7:
+				    return "csrrwi " + std::string(regnames->at(rd)) + ", " + get_csr_name(csr) + ", " +
+				           std::to_string(rs1); // rs1 is an immediate value here
 		    }
 		    break;
 	    case OPIMM: // OP-IMM

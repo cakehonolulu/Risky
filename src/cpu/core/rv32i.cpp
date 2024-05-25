@@ -140,6 +140,11 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                     case 0b101:
                         rv32i_bge(opcode);
                         break;
+
+					case 0b111:
+		                rv32i_bgeu(opcode);
+		                break;
+
                     default:
                         unknown_branch_opcode(funct3);
                         break;
@@ -173,6 +178,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                         case 0b101:
                             rv32i_csrrsi(opcode);
                             break;
+
+	                    case 0b111:
+		                    rv32i_csrrwi(opcode);
+		                    break;
 
                         default:
                             unknown_zicsr_opcode(funct3);
@@ -440,6 +449,20 @@ void RV32I::rv32i_csrrsi(std::uint32_t opcode) {
 	}
 }
 
+void RV32I::rv32i_csrrwi(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t uimm = (opcode >> 15) & 0x1F;
+	std::uint16_t csr = (opcode >> 20) & 0xFFF;
+
+	std::uint32_t old_csr_value = csr_read(csr);
+
+	if (rd != 0) {
+		registers[rd] = old_csr_value;
+	}
+
+	csr_write(csr, uimm);
+}
+
 void RV32I::rv32i_fence_i(std::uint32_t opcode) {
 	/*
 	 * TODO:
@@ -536,6 +559,23 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 	imm = (imm << 19) >> 19;  // Sign extend to 32 bits
 
 	if (static_cast<std::int32_t>(registers[rs1]) >= static_cast<std::int32_t>(registers[rs2])) {
+		pc += imm - 4;
+	}
+}
+
+void RV32I::rv32i_bgeu(std::uint32_t opcode) {
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+	std::int32_t imm_12 = (opcode >> 31) & 0x1;
+	std::int32_t imm_10_5 = (opcode >> 25) & 0x3F;
+	std::int32_t imm_4_1 = (opcode >> 8) & 0xF;
+	std::int32_t imm_11 = (opcode >> 7) & 0x1;
+
+	std::int32_t imm = (imm_12 << 12) | (imm_11 << 11) | (imm_10_5 << 5) | (imm_4_1 << 1);
+	imm = (imm << 19) >> 19;
+
+	if (static_cast<std::uint32_t>(registers[rs1]) >= static_cast<std::uint32_t>(registers[rs2])) {
 		pc += imm - 4;
 	}
 }
