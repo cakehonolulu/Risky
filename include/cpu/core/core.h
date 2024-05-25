@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <elf.h>
+#include <thread>
 
 // Forward declaration of RISCV template class
 template <std::uint8_t xlen, bool is_embedded>
@@ -14,6 +15,25 @@ class RISCV;
 class Core {
 public:
     Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
+
+	void startThread() {
+		is_running = true;
+		if (!threadRunning) {
+			threadRunning = true;
+			coreThread = std::thread(&Core::coreThreadFunc, this);
+		}
+	}
+
+	// Function to stop the core thread
+	void stopThread() {
+		is_running = false;
+		if (threadRunning) {
+			threadRunning = false;
+			if (coreThread.joinable()) {
+				coreThread.join();
+			}
+		}
+	}
 
     // Function pointers for pc, registers, and csrs
     std::function<std::any()> pc;
@@ -25,7 +45,6 @@ public:
 	std::function<void()> stop;
     std::function<void()> reset;
     std::function<void()> run;
-	std::function<bool()> isRunning;
 
     // Assign a new RISCV instance to Core
     template <std::uint8_t xlen, bool is_embedded>
@@ -37,7 +56,6 @@ public:
         reset = [riscv]() { riscv->reset(); };
         run = [riscv]() { riscv->run(); };
 	    stop = [riscv]() { riscv->stop(); };
-	    isRunning = [riscv]() { return riscv->isRunning(); };
 
         if constexpr (xlen == 32) {
             pc = [riscv]() -> std::any { return std::any(riscv->pc); };
@@ -192,8 +210,34 @@ public:
         return (this->xlen == xlen) && (this->is_embedded == is_embedded);
     }
 
+	bool is_running = false;
 private:
-    // Pointer to the current RISCV instance
+	std::thread coreThread;
+	std::atomic<bool> threadRunning{false};
+	std::mutex threadMutex; // Use mutex for thread synchronization if needed
+
+	void coreThreadFunc() {
+		while (threadRunning) {
+			// Call step function of RISC-V core
+			step();
+
+			// Check for stop condition (e.g., requested exit)
+			if (stopConditionMet()) {
+				break;
+			}
+		}
+	}
+
+	// Check if stop condition is met (e.g., requested exit)
+	bool stopConditionMet() {
+		// Check if requested_exit flag is set
+		if (Risky::requested_exit) {
+			return true;
+		}
+		return false;
+	}
+
+	// Pointer to the current RISCV instance
     std::any riscv;
     std::uint8_t xlen;
     bool is_embedded;
