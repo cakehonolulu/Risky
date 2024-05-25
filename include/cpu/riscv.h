@@ -15,6 +15,7 @@
 #define MISCMEM 0b0001111
 #define OPIMM   0b0010011
 #define STORE   0b0100011
+#define OP      0b0110011
 #define BRANCH  0b1100011
 #define SYSTEM  0b1110011
 
@@ -92,7 +93,7 @@ public:
 	bool has_a;
 	bool has_m;
 	bool has_zicsr;
-	bool has_zifence;
+	bool has_zifencei;
     bool has_compressed;
 	bool running = false;
 

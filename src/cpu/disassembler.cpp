@@ -150,6 +150,17 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 				}
 			}
 			break;
+
+	    case OP: // OP
+		    switch (funct7) {
+			    case 0b0000001:
+				    switch (funct3) {
+					    case 0b100:
+						    return "div " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::string(regnames->at(rs2));
+				    }
+				    break;
+		    }
+		    break;
     }
     return "UNKNOWN_OPCODE";
 }

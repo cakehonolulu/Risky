@@ -1,6 +1,7 @@
 #include <cpu/core/rv32i.h>
 #include <cpu/registers.h>
 #include <cstring>
+#include <bitset>
 
 RV32I::RV32I(const std::vector<std::string>& extensions)
 		: RISCV<32>(extensions) {
@@ -12,6 +13,7 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
     std::uint16_t opcode_ = 0;
     std::uint16_t opcode_rv16 = 0;
     std::uint8_t funct3 = 0;
+	std::uint8_t funct7 = 0;
 
     // Check for RV16
     if ((opcode & 0x3) != 0x3) {
@@ -54,7 +56,8 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
     {
         // RV32
         funct3 = (opcode >> 12) & 0x7;
-        opcode_rv32 = opcode & 0x7F;
+        funct7 = (opcode >> 25) & 0x7F;
+		opcode_rv32 = opcode & 0x7F;
 
         switch (opcode_rv32) {
 
@@ -83,10 +86,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 	        case MISCMEM:
                 switch (funct3) {
                     case 0b001:
-                        if (has_zifence) {
+                        if (has_zifencei) {
                             rv32i_fence_i(opcode);
                         } else {
-                            no_ext("Zifence");
+                            no_ext("Zifencei");
                         }
                         break;
                     default:
@@ -122,6 +125,30 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                         break;
                 }
                 break;
+
+	        case OP:
+		        if (has_m) {
+					switch (funct7) {
+						case 0b0000001:
+							switch (funct3) {
+								case 0b100:
+									rv32i_div(opcode);
+									break;
+								default:
+									unknown_op_opcode(funct3, funct7);
+									break;
+							}
+							break;
+
+					        default:
+						        unknown_op_opcode(funct3, funct7);
+						        break;
+				        }
+			        break;
+				} else {
+			        no_ext("M");
+		        }
+		        break;
 
             case BRANCH:
                 switch (funct3) {
@@ -281,6 +308,16 @@ void RV32I::unknown_store_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_op_opcode(std::uint8_t funct3, std::uint8_t funct7) {
+	std::ostringstream logMessage;
+	logMessage << "[RISKY] Unimplemented OP opcode: funct3=0b" << std::bitset<3>(funct3)
+	           << ", funct7=0b" << std::bitset<7>(funct7);
+
+	Logger::Instance().Error(logMessage.str());
+
+	Risky::exit();
+}
+
 void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
@@ -390,6 +427,24 @@ void RV32I::rv32i_lbu(std::uint32_t opcode) {
 	uint8_t loaded_byte = bus.read8(effective_address);
 
 	registers[rd] = static_cast<uint32_t>(static_cast<int32_t>(loaded_byte));
+}
+
+// OP
+void RV32I::rv32i_div(std::uint32_t opcode) {
+	std::uint8_t rd = (opcode >> 7) & 0x1F;
+	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+	std::int32_t dividend = static_cast<std::int32_t>(registers[rs1]);
+	std::int32_t divisor = static_cast<std::int32_t>(registers[rs2]);
+
+	if (divisor == 0) {
+		registers[rd] = -1;
+	} else if (dividend == INT32_MIN && divisor == -1) {
+		registers[rd] = dividend;
+	} else {
+		registers[rd] = dividend / divisor;
+	}
 }
 
 void RV32I::rv32i_csrrw(std::uint32_t opcode) {

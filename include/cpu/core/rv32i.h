@@ -13,6 +13,7 @@ public:
 	void unknown_miscmem_opcode(std::uint8_t funct3);
 	void unknown_branch_opcode(std::uint8_t funct3);
 	void unknown_store_opcode(std::uint8_t funct3);
+	void unknown_op_opcode(std::uint8_t funct3, std::uint8_t funct7);
 	void unknown_immediate_opcode(std::uint8_t funct3);
     void unknown_compressed_opcode(std::uint8_t funct3);
 	void no_ext(std::string extension);
@@ -57,6 +58,9 @@ private:
 	// STORE
 	void rv32i_sb(std::uint32_t opcode);
 	void rv32i_sw(std::uint32_t opcode);
+
+	// OP
+	void rv32i_div(std::uint32_t opcode);
 
 	// SYSTEM
 	void rv32i_csrrw(std::uint32_t opcode);

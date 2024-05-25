@@ -115,7 +115,7 @@ void ImGui_Risky::run() {
 	bool has_A_extension = false;
     bool has_C_extension = false;
 	bool has_Zicsr_extension = false;
-	bool has_Zifence_extension = false;
+	bool has_Zifencei_extension = false;
 	bool nommu = true;
     bool built_core = false;
     bool core_empty_alert = false;
@@ -361,7 +361,7 @@ void ImGui_Risky::run() {
 		{
 			ImGui::Begin("RISC-V Core Configuration");
 
-			static const char* presetNames[] = { "None", "RV32I+C+Zifence+Zicsr", "Custom" };
+			static const char* presetNames[] = { "None", "RV32I+M+C+Zifencei+Zicsr", "Custom" };
 			static int selectedPreset = 0;
 
 			ImGui::Text("Presets:");
@@ -372,14 +372,15 @@ void ImGui_Risky::run() {
 				has_A_extension = false;
 				has_C_extension = false;
 				has_Zicsr_extension = false;
-				has_Zifence_extension = false;
+				has_Zifencei_extension = false;
 				nommu = true;
 
 				switch (selectedPreset) {
 					case 1:  // RV32I+C+Zifence+Zicsr
 						selected_riscv_variant = 0;
 						has_C_extension = true;
-						has_Zifence_extension = true;
+						has_M_extension = true;
+						has_Zifencei_extension = true;
 						has_Zicsr_extension = true;
 						break;
 					case 2:
@@ -401,14 +402,14 @@ void ImGui_Risky::run() {
 			ImGui::Text("Extensions:");
 			ImGui::Checkbox("M (Multiplication & Division)", &has_M_extension);
 			ImGui::SameLine();
-			ImGui::Checkbox("A (Atomic)", &has_A_extension);;
+			ImGui::Checkbox("A (Atomic)", &has_A_extension);
             ImGui::SameLine();
-            ImGui::Checkbox("C (Compressed)", &has_C_extension);;
+            ImGui::Checkbox("C (Compressed)", &has_C_extension);
 
 
 			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
 			ImGui::SameLine();
-			ImGui::Checkbox("Zifence", &has_Zifence_extension);
+			ImGui::Checkbox("Zifencei", &has_Zifencei_extension);
 
 			ImGui::Text("MMU Emulation:");
 			ImGui::Checkbox("None (nommu)", &nommu);
@@ -426,8 +427,8 @@ void ImGui_Risky::run() {
                         extensions.push_back("C");
 					if (has_Zicsr_extension)
 						extensions.push_back("Zicsr");
-					if (has_Zifence_extension)
-						extensions.push_back("Zifence");
+					if (has_Zifencei_extension)
+						extensions.push_back("Zifencei");
 
 					switch (selected_riscv_variant)
 					{
