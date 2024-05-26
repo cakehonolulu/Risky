@@ -99,18 +99,22 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 		ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
 		ImGui::PopStyleVar(2);
 	} else {
-		if (core->is_running) {
+		// Check if the core stepping thread is running
+		if (core->thread_running()) {
 			if (ImGui::Button("Stop")) {
-				core->stopThread();
+				// Stop the step thread
+				core->stop_();
 			}
 		} else {
 			if (ImGui::ArrowButton("##PlayButton", ImGuiDir_Right)) {
-				core->startThread();
+				// Start the step thread
+				core->start_();
 			}
 		}
 	}
 
-	if (core->is_running) {
+	// Check if the core stepping thread is running
+	if (core->check_thread()) {
 		startPC = std::any_cast<std::uint32_t>(core->pc());
 		ImGui::SetScrollY(0);
 	}

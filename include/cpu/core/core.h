@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <elf.h>
-#include <thread>
+#include <utils/core_thread.h>
 
 // Forward declaration of RISCV template class
 template <std::uint8_t xlen, bool is_embedded>
@@ -14,26 +14,7 @@ class RISCV;
 // Define Core class
 class Core {
 public:
-    Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
-
-	void startThread() {
-		is_running = true;
-		if (!threadRunning) {
-			threadRunning = true;
-			coreThread = std::thread(&Core::coreThreadFunc, this);
-		}
-	}
-
-	// Function to stop the core thread
-	void stopThread() {
-		is_running = false;
-		if (threadRunning) {
-			threadRunning = false;
-			if (coreThread.joinable()) {
-				coreThread.join();
-			}
-		}
-	}
+	Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
 
     // Function pointers for pc, registers, and csrs
     std::function<std::any()> pc;
@@ -210,36 +191,26 @@ public:
         return (this->xlen == xlen) && (this->is_embedded == is_embedded);
     }
 
-	bool is_running = false;
+	void start_() {
+		steppingThread.start([this]() { this->step(); });
+	}
+
+	void stop_() {
+		steppingThread.stop();
+	}
+
+	bool thread_running() const {
+		return steppingThread.isRunning();
+	}
+
+	bool check_thread() {
+		return steppingThread.checkAndClearUpdateFlag();
+	}
+
 private:
-	std::thread coreThread;
-	std::atomic<bool> threadRunning{false};
-	std::mutex threadMutex; // Use mutex for thread synchronization if needed
-
-	void coreThreadFunc() {
-		while (threadRunning) {
-			// Call step function of RISC-V core
-			step();
-
-			// Check for stop condition (e.g., requested exit)
-			if (stopConditionMet()) {
-				break;
-			}
-		}
-	}
-
-	// Check if stop condition is met (e.g., requested exit)
-	bool stopConditionMet() {
-		// Check if requested_exit flag is set
-		if (Risky::requested_exit) {
-			is_running = false;
-			return true;
-		}
-		return false;
-	}
-
 	// Pointer to the current RISCV instance
     std::any riscv;
     std::uint8_t xlen;
     bool is_embedded;
+	SteppingThread steppingThread;
 };
