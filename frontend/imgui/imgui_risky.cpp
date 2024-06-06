@@ -361,7 +361,7 @@ void ImGui_Risky::run() {
 		{
 			ImGui::Begin("RISC-V Core Configuration");
 
-			static const char* presetNames[] = { "None", "RV32I+M+C+Zifencei+Zicsr", "Custom" };
+			static const char* presetNames[] = { "None", "RV32I+M+A+C+Zifencei+Zicsr", "Custom" };
 			static int selectedPreset = 0;
 
 			ImGui::Text("Presets:");
@@ -376,10 +376,11 @@ void ImGui_Risky::run() {
 				nommu = true;
 
 				switch (selectedPreset) {
-					case 1:  // RV32I+C+Zifence+Zicsr
+					case 1:  // RV32I+M+A+C+Zifence+Zicsr
 						selected_riscv_variant = 0;
-						has_C_extension = true;
 						has_M_extension = true;
+                        has_A_extension = true;
+                        has_C_extension = true;
 						has_Zifencei_extension = true;
 						has_Zicsr_extension = true;
 						break;

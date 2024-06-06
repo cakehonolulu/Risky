@@ -52,6 +52,9 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 
 		case LOAD:
 			switch (funct3) {
+                case 0x0: // LB
+                    return "lb " + std::string(regnames->at(rd)) + ", " + std::to_string(imm) + "(" +
+                           std::string(regnames->at(rs1)) + ")";
 				case 0x2: // LW
 					return "lw " + std::string(regnames->at(rd)) + ", " + std::to_string(imm) + "(" +
 					       std::string(regnames->at(rs1)) + ")";
@@ -96,10 +99,22 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 		    break;
 	    case OPIMM: // OP-IMM
 		    switch (funct3) {
-			    case 0x0: // ADDI
+			    case 0b000: // ADDI
 				    return "addi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
 				           std::to_string(imm);
-			    case 0x7: // ANDI
+                case 0b001: // SLLI
+                    return "slli " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::to_string(rs2);
+                case 0b011: // SLTIU
+                    return "sltiu " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::to_string(imm);
+                case 0b101: // ANDI
+                    if (funct7 & (1 << 5)) { // SRAI
+                        return "srai " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::to_string(imm);
+                    } else { // SRLI
+                        return "srli " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::to_string(imm);
+                    }
+                case 0b111: // ANDI
 				    return "andi " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
 				           std::to_string(imm);
 		    }
@@ -151,16 +166,64 @@ std::string Disassembler::DecodeRV32(uint32_t opcode, const std::vector<std::str
 			}
 			break;
 
+        case AMO: // AMO
+            switch (funct3) {
+                case 0b010:
+                    switch (opcode >> 27) {
+                        case 0b0000000: // AMOADD.W
+                            return "amoadd.w " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs2)) + ", (" + std::string(regnames->at(rs1)) + ")";
+                        case 0b0001000: // AMOOR.W
+                            return "amoor.w " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs2)) + ", (" + std::string(regnames->at(rs1)) + ")";
+                    }
+                    break;
+            }
+            break;
+
 	    case OP: // OP
-		    switch (funct7) {
-			    case 0b0000001:
-				    switch (funct3) {
-					    case 0b100:
-						    return "div " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " + std::string(regnames->at(rs2));
-				    }
-				    break;
-		    }
-		    break;
+            if ((funct7 & (1 << 0)) == 0) {
+                switch (funct3) {
+                    case 0b000:
+                        if (funct7 == 0x20) { // SUB
+                            return "sub " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) +
+                                   ", " + std::string(regnames->at(rs2));
+                        } else if (funct7 == 0x00) { // ADD
+                            return "add " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) +
+                                   ", " + std::string(regnames->at(rs2));
+                        }
+                    case 0b001: // SLL
+                        return "sll " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                    case 0b011: // SLTU
+                        return "sltu " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                    case 0b100: // XOR
+                        return "xor " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                    case 0b110: // OR
+                        return "or " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                    case 0b111: // AND
+                        return "and " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                }
+            }
+            else {
+                switch (funct3) {
+                    case 0b000:
+                        return "mul " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+
+                    case 0b011:
+                        return "mulhu " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+
+                    case 0b100:
+                        return "div " + std::string(regnames->at(rd)) + ", " + std::string(regnames->at(rs1)) + ", " +
+                               std::string(regnames->at(rs2));
+                        break;
+                }
+            }
+            break;
     }
     return "UNKNOWN_OPCODE";
 }

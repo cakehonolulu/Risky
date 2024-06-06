@@ -13,7 +13,7 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
     std::uint16_t opcode_ = 0;
     std::uint16_t opcode_rv16 = 0;
     std::uint8_t funct3 = 0;
-	std::uint8_t funct7 = 0;
+	std::uint32_t funct7 = 0;
 
     // Check for RV16
     if ((opcode & 0x3) != 0x3) {
@@ -71,6 +71,9 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
 	        case LOAD:
 		        switch (funct3) {
+                    case 0b000:
+                        rv32i_lb(opcode);
+                        break;
 			        case 0b010:
 				        rv32i_lw(opcode);
 				        break;
@@ -103,6 +106,18 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                     case 0b000:
                         rv32i_addi(opcode);
                         break;
+                    case 0b001:
+                        rv32i_slli(opcode);
+                        break;
+                    case 0b011:
+                        rv32i_sltiu(opcode);
+                        break;
+                    case 0b101:
+                        if (funct7 & (1 << 5)) {
+                            // SRAI
+                        } else {
+                            rv32i_srli(opcode);
+                        }
 	                case 0b111:
 		                rv32i_andi(opcode);
 		                break;
@@ -126,29 +141,97 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
                 }
                 break;
 
-	        case OP:
-		        if (has_m) {
-					switch (funct7) {
-						case 0b0000001:
-							switch (funct3) {
-								case 0b100:
-									rv32i_div(opcode);
-									break;
-								default:
-									unknown_op_opcode(funct3, funct7);
-									break;
-							}
-							break;
+            case AMO:
+                switch (funct3) {
+                    case 0b010:
+                        switch (opcode >> 27) {
+                            case 0b0000000:
+                                rv32i_amoadd_w(opcode);
+                                break;
+                            case 0b0001000:
+                                rv32i_amoor_w(opcode);
+                                break;
+                            default:
+                                unknown_amo_opcode(funct3, funct7);
+                                break;
+                        }
+                        break;
+                    default:
+                        unknown_amo_opcode(funct3, funct7);
+                        break;
+                }
+                break;
 
-					        default:
-						        unknown_op_opcode(funct3, funct7);
-						        break;
-				        }
-			        break;
-				} else {
-			        no_ext("M");
-		        }
-		        break;
+            case OP:
+                if ((funct7 & (1 << 0)) == 0) {
+                    switch (funct3) {
+                        case 0b000:
+                        {
+                            if (funct7 == 0x20) {
+                                rv32i_sub(opcode);
+                            } else if (funct7 == 0x00) {
+                                rv32i_add(opcode);
+                            }
+                        }
+                        break;
+
+                        case 0b001:
+                            rv32i_sll(opcode);
+                            break;
+
+                        case 0b011:
+                            rv32i_sltu(opcode);
+                            break;
+
+                        case 0b100:
+                            rv32i_xor(opcode);
+                            break;
+
+                        case 0b110:
+                            rv32i_or(opcode);
+                            break;
+
+                        case 0b111:
+                            rv32i_and(opcode);
+                            break;
+
+                        default:
+                            unknown_op_opcode(funct3, funct7);
+                            break;
+                    }
+                }
+                else
+                {
+                    switch (funct3) {
+                        case 0b000:
+                            if (has_m) {
+                                rv32i_mul(opcode);
+                            } else {
+                                no_ext("M");
+                            }
+                            break;
+
+                        case 0b011:
+                            if (has_m) {
+                                rv32i_mulhu(opcode);
+                            } else {
+                                no_ext("M");
+                            }
+                            break;
+
+                        case 0b100:
+                            if (has_m) {
+                                rv32i_div(opcode);
+                            } else {
+                                no_ext("M");
+                            }
+                            break;
+                        default:
+                            unknown_op_opcode(funct3, funct7);
+                            break;
+                    }
+                }
+                break;
 
             case BRANCH:
                 switch (funct3) {
@@ -166,6 +249,10 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
                     case 0b101:
                         rv32i_bge(opcode);
+                        break;
+
+                    case 0b110:
+                        rv32i_bltu(opcode);
                         break;
 
 					case 0b111:
@@ -308,6 +395,16 @@ void RV32I::unknown_store_opcode(std::uint8_t funct3) {
 	Risky::exit();
 }
 
+void RV32I::unknown_amo_opcode(std::uint8_t funct3, std::uint8_t funct7) {
+    std::ostringstream logMessage;
+    logMessage << "[RISKY] Unimplemented AMO opcode: funct3=0b" << std::bitset<3>(funct3)
+               << ", funct7=0b" << std::bitset<7>(funct7);
+
+    Logger::Instance().Error(logMessage.str());
+
+    Risky::exit();
+}
+
 void RV32I::unknown_op_opcode(std::uint8_t funct3, std::uint8_t funct7) {
 	std::ostringstream logMessage;
 	logMessage << "[RISKY] Unimplemented OP opcode: funct3=0b" << std::bitset<3>(funct3)
@@ -405,6 +502,20 @@ void RV32I::rv32i_jalr(std::uint32_t opcode) {
 	registers[rd] = temp;
 }
 
+void RV32I::rv32i_lb(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::int32_t imm = static_cast<int32_t>(opcode) >> 20;
+
+    uint32_t effective_address = registers[rs1] + imm;
+
+    int8_t loaded_value = bus.read8(effective_address);
+
+    std::int32_t sign_extended_value = static_cast<std::int32_t>(loaded_value);
+
+    registers[rd] = sign_extended_value;
+}
+
 void RV32I::rv32i_lw(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
@@ -430,6 +541,96 @@ void RV32I::rv32i_lbu(std::uint32_t opcode) {
 }
 
 // OP
+void RV32I::rv32i_sub(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] - registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_add(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] + registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_sll(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] << (registers[rs2] & 0x1F);
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_sltu(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = (registers[rs1] < registers[rs2]) ? 1 : 0;
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_xor(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] ^ registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_or(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] | registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_and(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] & registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_mul(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] * registers[rs2];
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_mulhu(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint64_t result = static_cast<std::uint64_t>(registers[rs1]) * static_cast<std::uint64_t>(registers[rs2]);
+
+    registers[rd] = static_cast<std::uint32_t>((result >> 32) & 0xFFFFFFFF);
+}
+
 void RV32I::rv32i_div(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
@@ -537,6 +738,36 @@ void RV32I::rv32i_addi(std::uint32_t opcode) {
 	registers[rd] = registers[rs1] + imm;
 }
 
+void RV32I::rv32i_slli(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t shamt = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] << shamt;
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_sltiu(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    auto imm = static_cast<std::uint32_t>(opcode) >> 20;
+
+    std::uint32_t result = (registers[rs1] < imm) ? 1 : 0;
+
+    registers[rd] = result;
+}
+
+void RV32I::rv32i_srli(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t shamt = (opcode >> 20) & 0x1F;
+
+    std::uint32_t result = registers[rs1] >> shamt;
+
+    registers[rd] = result;
+}
+
 void RV32I::rv32i_andi(std::uint32_t opcode) {
 	std::uint8_t rd = (opcode >> 7) & 0x1F;
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
@@ -618,6 +849,19 @@ void RV32I::rv32i_bge(std::uint32_t opcode) {
 	}
 }
 
+void RV32I::rv32i_bltu(std::uint32_t opcode) {
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+    std::int32_t imm = static_cast<std::int32_t>(opcode) >> 20;
+
+    if (registers[rs1] < registers[rs2]) {
+        // Calculate the branch target address
+        std::uint32_t target_address = pc + imm;
+        // Set the PC to the branch target address
+        pc = target_address;
+    }
+}
+
 void RV32I::rv32i_bgeu(std::uint32_t opcode) {
 	std::uint8_t rs1 = (opcode >> 15) & 0x1F;
 	std::uint8_t rs2 = (opcode >> 20) & 0x1F;
@@ -663,4 +907,31 @@ void RV32I::rv32i_sw(uint32_t opcode) {
 	uint32_t effective_address = registers[rs1] + signed_imm;
 
 	bus.write32(effective_address, registers[rs2]);
+}
+
+// AMO
+void RV32I::rv32i_amoor_w(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t address = registers[rs1];
+    std::uint32_t value = bus.read32(address);
+    std::uint32_t result = value | registers[rs2];
+    bus.write32(address, result);
+
+    registers[rd] = value;
+}
+
+void RV32I::rv32i_amoadd_w(std::uint32_t opcode) {
+    std::uint8_t rd = (opcode >> 7) & 0x1F;
+    std::uint8_t rs1 = (opcode >> 15) & 0x1F;
+    std::uint8_t rs2 = (opcode >> 20) & 0x1F;
+
+    std::uint32_t address = registers[rs1];
+    std::uint32_t value = bus.read32(address);
+    std::uint32_t result = value + registers[rs2];
+    bus.write32(address, result);
+
+    registers[rd] = value;
 }
