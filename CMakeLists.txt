@@ -4,6 +4,9 @@ project(risky LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
+add_compile_options(-fsanitize=address -g)
+add_link_options(-fsanitize=address -g)
+
 # Option to choose the frontend (default: ImGui)
 option(USE_IMGUI_FRONTEND "Use ImGui frontend" ON)
 option(USE_RAYLIB_FRONTEND "Use RayLib frontend" OFF)
