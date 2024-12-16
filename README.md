@@ -2,10 +2,7 @@
 
 A modular, RISC-V interpreter written in C++23
 
-
-
-
-https://github.com/cakehonolulu/Risky/assets/30508313/8c1ea745-6c7e-4ccd-9775-9523da69e4b0
+https://github.com/user-attachments/assets/dafd674c-6d62-490e-b884-0def513fb548
 
 Risky booting [Borax](https://github.com/cakehonolulu/borax)
 
