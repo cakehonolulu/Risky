@@ -98,10 +98,7 @@ void ImGuiLogBackend::render()
 {
     std::lock_guard<std::mutex> lock(log_mutex);
 
-    ImGui::Begin("Logger");
-
-    if (ImGui::BeginTabBar("LogTabs")) {
-        if (ImGui::BeginTabItem("Logs")) {
+        if (ImGui::Begin("Logs")) {
             for (const auto &entry : log_entries) {
                 if (entry.special) {
                     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
@@ -123,10 +120,10 @@ void ImGuiLogBackend::render()
 
                 if (entry.special) ImGui::PopStyleVar();
             }
-            ImGui::EndTabItem();
+            ImGui::End();
         }
 
-        if (ImGui::BeginTabItem("UART")) {
+        if (ImGui::Begin("UART")) {
             for (const auto &entry : uart_entries) {
                 size_t pos = entry.message.find("UNKNOWN: ");
                 const char *message_to_display = (pos != std::string::npos)
@@ -137,10 +134,8 @@ void ImGuiLogBackend::render()
                 ImGui::TextUnformatted(message_to_display);
                 ImGui::PopStyleColor();
             }
-            ImGui::EndTabItem();
+            ImGui::End();
         }
-        ImGui::EndTabBar();
-    }
+    
 
-    ImGui::End();
 }
