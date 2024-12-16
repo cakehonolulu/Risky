@@ -4,8 +4,10 @@ project(risky LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
-add_compile_options(-fsanitize=address -g)
-add_link_options(-fsanitize=address -g)
+if (ASAN)
+    add_compile_options(-fsanitize=address,leak,undefined,pointer-compare,pointer-subtract -g)
+    add_link_options(-fsanitize=address,leak,undefined,pointer-compare,pointer-subtract)
+endif()
 
 # Option to choose the frontend (default: ImGui)
 option(USE_IMGUI_FRONTEND "Use ImGui frontend" ON)

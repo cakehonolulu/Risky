@@ -1,4 +1,4 @@
-#include <frontend/imgui/imgui_risky.h>
+#include <frontends/imgui/imgui_risky.h>
 #include <cpu/registers.h>
 #include <cpu/disassembler.h>
 
@@ -93,7 +93,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
 	ImGui::Separator();
 
-	if (Risky::aborted()) {
+	if (Risky::is_aborted()) {
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
 		ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
 		ImGui::ArrowButton("##PlayButton", ImGuiDir_Right);
@@ -121,7 +121,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 
 	ImGui::SameLine();
 
-	if (Risky::aborted()) {
+	if (Risky::is_aborted()) {
 		ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
 		                    ImGui::GetStyle().Alpha * 0.5f);
 		ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, 1.0f);
@@ -136,11 +136,11 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 		}
 	}
 
-	if (Risky::aborted()) {
+	if (Risky::is_aborted()) {
 		ImGui::SameLine();
 		if (ImGui::Button("Reset")) {
 			core->reset();
-			Risky::abort = false;
+			Risky::reset_aborted();
 		}
 	}
 
@@ -229,8 +229,8 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 			try {
 				jumpOffset = std::stoul(immediate);
 			} catch (const std::invalid_argument& e) {
-				Logger::Instance().Error("[DEBUGGER] Invalid jump offset!");
-				Risky::exit();
+				Logger::error("Invalid jump offset!");
+				Risky::exit(1, Risky::Subsystem::Core);
 			}
 
 			std::uint32_t jumpAddress = currentPC + jumpOffset;

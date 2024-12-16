@@ -9,6 +9,7 @@
 #include <utils/symbols.h>
 #include <memory>
 #include "imgui.h"
+#include "log/log_imgui.hh"
 
 struct DisplayItem {
 	std::string text;
@@ -21,6 +22,7 @@ struct DisplayItem {
 
 class ImGui_Risky : public Risky {
 public:
+	ImGui_Risky();
 	void init() override;
 	void run() override;
 
@@ -35,4 +37,5 @@ private:
 
     std::unordered_map<std::uint32_t, Symbol> symbols;
 	bool symbols_loaded;
+	std::shared_ptr<ImGuiLogBackend> imgui_logger;
 };

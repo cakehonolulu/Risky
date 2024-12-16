@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include "risky.h"
 
 struct Symbol {
     std::uint32_t address;

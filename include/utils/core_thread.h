@@ -19,7 +19,7 @@ public:
 			while (running) {
 				stepFunction();
 				updateFlag.store(true, std::memory_order_release);
-				if (Risky::requestedExit()) break;
+				if (Risky::is_aborted()) break;
 			}
 			running = false;
 		});

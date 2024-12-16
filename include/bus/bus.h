@@ -4,6 +4,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include "risky.h"
+#include <log/log.hh>
 
 #define UART                        0x10000000
 #define UART_THR                    (UART + 0x00)

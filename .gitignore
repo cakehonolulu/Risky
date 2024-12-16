@@ -35,3 +35,9 @@
 .idea/
 cmake-*
 *.map
+
+risky
+CMakeCache.txt
+*.cmake
+imgui.ini
+*CMakeFiles*

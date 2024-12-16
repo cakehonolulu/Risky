@@ -7,7 +7,8 @@
 #include <unordered_map>
 
 #include <bus/bus.h>
-#include <log/log.h>
+#include <log/log.hh>
+#include "risky.h"
 
 #define EMBEDDED true
 
@@ -73,8 +74,8 @@ public:
 		if (csr < 4096) {
 			return csrs[csr];
 		} else {
-			Logger::Instance().Error("[RISCV] csr_read: Invalid CSR register read: " + std::to_string(csr));
-			Risky::exit();
+			Logger::error("csr_read: Invalid CSR register read: " + std::to_string(csr));
+			Risky::exit(1, Risky::Subsystem::Core);
 		}
 	}
 
@@ -86,8 +87,8 @@ public:
 		if (csr < 4096) {
 			csrs[csr] = value;
 		} else {
-			Logger::Instance().Error("[RISCV] csr_write: Invalid CSR register write: " + std::to_string(csr));
-			Risky::exit();
+			Logger::error("csr_write: Invalid CSR register write: " + std::to_string(csr));
+			Risky::exit(1, Risky::Subsystem::Core);
 		}
 	}
 

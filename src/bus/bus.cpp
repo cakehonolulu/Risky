@@ -1,8 +1,11 @@
 #include <bus/bus.h>
-#include <log/log.h>
+#include <log/log.hh>
+#include <iostream>
+#include <iomanip>
 
 Bus::Bus()
 {
+	Logger::set_subsystem("BUS");
 	main_memory_size = 16 * 1024 * 1024;
 	main_memory = new std::uint8_t[main_memory_size];
 }
@@ -11,20 +14,17 @@ Bus::~Bus() {
 	delete[] main_memory;
 }
 
-#include <iostream>
-#include <iomanip>
-
 void Bus::load_binary(const std::string& binary_path)
 {
 	std::ifstream binary_file(binary_path, std::ios::binary);
 
 	if (!binary_file.is_open()) {
-		Logger::Instance().Error("[BUS] Failed to open the binary file: " + binary_path);
-		Risky::exit();
+		Logger::error("Failed to open the binary file: " + binary_path);
+		Risky::exit(1, Risky::Subsystem::Bus);
 	}
 	else
 	{
-		Logger::Instance().Log("[BUS] Binary file opened successfully...!");
+		Logger::info("Binary file opened successfully...!");
 	}
 
 	const uint32_t binary_base_addr = 0x00000000;
@@ -45,8 +45,8 @@ void Bus::load_binary(const std::string& binary_path)
 			offset++;
 		}
 	} else {
-		Logger::Instance().Error("[BUS] Failed to read the binary file: " + binary_path);
-		Risky::exit();
+		Logger::error("Failed to read the binary file: " + binary_path);
+		Risky::exit(1, Risky::Subsystem::Bus);
 	}
 
 	binary_file.close();
@@ -77,11 +77,11 @@ std::uint8_t Bus::read8(std::uint32_t address)
 	}
 
 	std::stringstream errorMessage;
-	errorMessage << "[BUS] read8: Unhandled memory address: 0x"
+	errorMessage << "read8: Unhandled memory address: 0x"
 	             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
 
-	Logger::Instance().Error(errorMessage.str());
-	Risky::exit();
+	Logger::error(errorMessage.str());
+	Risky::exit(1, Risky::Subsystem::Bus);
 	return 0x00;
 }
 
@@ -103,11 +103,11 @@ std::uint32_t Bus::read32(std::uint32_t address)
     }
 
 	std::stringstream errorMessage;
-	errorMessage << "[BUS] read32: Unhandled memory address: 0x"
+	errorMessage << "read32: Unhandled memory address: 0x"
 	             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
 
-	Logger::Instance().Error(errorMessage.str());
-	Risky::exit();
+	Logger::error(errorMessage.str());
+	Risky::exit(1, Risky::Subsystem::Bus);
 	return 0x00000000;
 }
 
@@ -115,7 +115,7 @@ void Bus::write8(std::uint32_t address, std::uint8_t value)
 {
 	if (address == UART_THR)
 	{
-        Logger::Instance().Uart(value);
+        //Logger::Instance().Uart(value);
 	}
 	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
 	{
@@ -126,11 +126,11 @@ void Bus::write8(std::uint32_t address, std::uint8_t value)
 	else
 	{
 		std::stringstream errorMessage;
-		errorMessage << "[BUS] write8: Unhandled memory address: 0x"
+		errorMessage << "write8: Unhandled memory address: 0x"
 		             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
 
-		Logger::Instance().Error(errorMessage.str());
-		Risky::exit();
+		Logger::error(errorMessage.str());
+		Risky::exit(1, Risky::Subsystem::Bus);
 	}
 }
 
@@ -148,10 +148,10 @@ void Bus::write32(std::uint32_t address, std::uint32_t value)
 	else
 	{
 		std::stringstream errorMessage;
-		errorMessage << "[BUS] write32: Unhandled memory address: 0x"
+		errorMessage << "write32: Unhandled memory address: 0x"
 		             << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << address;
 
-		Logger::Instance().Error(errorMessage.str());
-		Risky::exit();
+		Logger::error(errorMessage.str());
+		Risky::exit(1, Risky::Subsystem::Bus);
 	}
 }

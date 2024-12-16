@@ -62,8 +62,8 @@ public:
                 riscvInstance->pc = newPC;
             }
         } else {
-            Logger::Instance().Error("Incorrect xlen for set_pc_32");
-            Risky::exit();
+            Logger::error("Incorrect xlen for set_pc_32");
+            Risky::exit(1, Risky::Subsystem::Core);
         }
     }
 
@@ -75,16 +75,16 @@ public:
                 riscvInstance->pc = newPC;
             }
         } else {
-            Logger::Instance().Error("Incorrect xlen for set_pc_64");
-            Risky::exit();
+            Logger::error("Incorrect xlen for set_pc_64");
+            Risky::exit(1, Risky::Subsystem::Core);
         }
     }
 
     // Get a 32-bit register value
     std::uint32_t register_32(std::size_t idx) const {
         if (xlen != 32) {
-            Logger::Instance().Error("Incompatible register access (expected 32-bit)");
-            Risky::exit();
+            Logger::error("Incompatible register access (expected 32-bit)");
+            Risky::exit(1, Risky::Subsystem::Core);
         }
 
         std::uint32_t register_ = std::any_cast<std::uint32_t>(registers(idx));
@@ -95,8 +95,8 @@ public:
     // Get a 64-bit register value
     std::uint64_t register_64(std::size_t idx) const {
         if (xlen != 64) {
-            Logger::Instance().Error("Incompatible register access (expected 64-bit)");
-            Risky::exit();
+            Logger::error("Incompatible register access (expected 64-bit)");
+            Risky::exit(1, Risky::Subsystem::Core);
         }
 
         std::uint64_t register_ = std::any_cast<std::uint64_t>(registers(idx));
@@ -112,24 +112,24 @@ public:
                 if (riscv_32) {
                     (*riscv_32)->bus.load_binary(filePathName);
                 } else {
-                    Logger::Instance().Error("Incompatible RISCV instance (expected 32-bit)");
-                    Risky::exit();
+                    Logger::error("Incompatible RISCV instance (expected 32-bit)");
+                    Risky::exit(1, Risky::Subsystem::Core);
                 }
             } else if (xlen == 64) {
                 auto riscv_64 = std::any_cast<RISCV<64, false>*>(&riscv);
                 if (riscv_64) {
                     (*riscv_64)->bus.load_binary(filePathName);
                 } else {
-                    Logger::Instance().Error("Incompatible RISCV instance (expected 64-bit)");
-                    Risky::exit();
+                    Logger::error("Incompatible RISCV instance (expected 64-bit)");
+                    Risky::exit(1, Risky::Subsystem::Core);
                 }
             } else {
-                Logger::Instance().Error("Unsupported xlen");
-                Risky::exit();
+                Logger::error("Unsupported xlen");
+                Risky::exit(1, Risky::Subsystem::Core);
             }
         } else {
-            Logger::Instance().Error("No RISCV instance assigned to Core");
-            Risky::exit();
+            Logger::error("No RISCV instance assigned to Core");
+            Risky::exit(1, Risky::Subsystem::Core);
         }
     }
 
@@ -137,7 +137,7 @@ public:
     bool load_elf(const std::string& filename) {
         std::ifstream elf_file(filename, std::ios::binary);
         if (!elf_file) {
-            Logger::Instance().Error("[RISKY] load_elf: Could not open ELF file " + filename);
+            Logger::error("load_elf: Could not open ELF file " + filename);
             return false;
         }
 
@@ -147,7 +147,7 @@ public:
 
         // Verify ELF magic number
         if (memcmp(header.e_ident, ELFMAG, SELFMAG) != 0) {
-            Logger::Instance().Error("[RISKY] load_elf: " + filename + " is not a valid ELF file");
+            Logger::error("load_elf: " + filename + " is not a valid ELF file");
             return false;
         }
 

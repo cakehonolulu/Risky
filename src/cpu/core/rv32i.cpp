@@ -37,11 +37,11 @@ void RV32I::execute_opcode(std::uint32_t opcode) {
 
                     default:
                         std::ostringstream logMessage;
-                        logMessage << "[RISKY] Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode_rv16) << ", funct3: 0b" << format("{:04b}", funct3);
+                        logMessage << "Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode_rv16) << ", funct3: 0b" << format("{:04b}", funct3);
 
-                        Logger::Instance().Error(logMessage.str());
+                        Logger::error(logMessage.str());
 
-                        Risky::exit();
+                        Risky::exit(1, Risky::Subsystem::Core);
                         break;
                 }
                 break;
@@ -325,112 +325,112 @@ void RV32I::step() {
 
 void RV32I::no_ext(std::string extension) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] FATAL ERROR: Called a " << extension.c_str() << " extension opcode but it's unavailable for this core!";
+	logMessage << "FATAL ERROR: Called a " << extension.c_str() << " extension opcode but it's unavailable for this core!";
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_rv16_opcode(std::uint16_t opcode) {
     std::ostringstream logMessage;
-    logMessage << "[RISKY] Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode);
+    logMessage << "Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode);
 
-    Logger::Instance().Error(logMessage.str());
+    Logger::error(logMessage.str());
 
-    Risky::exit();
+    Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_rv32_opcode(std::uint32_t opcode) {
     std::ostringstream logMessage;
-    logMessage << "[RISKY] Unimplemented RV32 Opcode: 0x" << format("{:08X}", opcode);
+    logMessage << "Unimplemented RV32 Opcode: 0x" << format("{:08X}", opcode);
 
-    Logger::Instance().Error(logMessage.str());
+    Logger::error(logMessage.str());
 
-    Risky::exit();
+    Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_zicsr_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented Zicsr opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented Zicsr opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_load_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented LOAD opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented LOAD opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_miscmem_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented MISC-MEM opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented MISC-MEM opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_branch_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented BRANCH opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented BRANCH opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_store_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented STORE opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented STORE opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_amo_opcode(std::uint8_t funct3, std::uint8_t funct7) {
     std::ostringstream logMessage;
-    logMessage << "[RISKY] Unimplemented AMO opcode: funct3=0b" << std::bitset<3>(funct3)
+    logMessage << "Unimplemented AMO opcode: funct3=0b" << std::bitset<3>(funct3)
                << ", funct7=0b" << std::bitset<7>(funct7);
 
-    Logger::Instance().Error(logMessage.str());
+    Logger::error(logMessage.str());
 
-    Risky::exit();
+    Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_op_opcode(std::uint8_t funct3, std::uint8_t funct7) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented OP opcode: funct3=0b" << std::bitset<3>(funct3)
+	logMessage << "Unimplemented OP opcode: funct3=0b" << std::bitset<3>(funct3)
 	           << ", funct7=0b" << std::bitset<7>(funct7);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_immediate_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
+	logMessage << "Unimplemented OP-IMM opcode: 0b" << format("{:08b}", funct3);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }
 
 void RV32I::unknown_compressed_opcode(std::uint8_t funct3) {
     std::ostringstream logMessage;
-    logMessage << "[RISKY] Unimplemented Compressed opcode: 0b" << format("{:08b}", funct3);
+    logMessage << "Unimplemented Compressed opcode: 0b" << format("{:08b}", funct3);
 
-    Logger::Instance().Error(logMessage.str());
+    Logger::error(logMessage.str());
 
-    Risky::exit();
+    Risky::exit(1, Risky::Subsystem::Core);
 }
 
 // RV16

@@ -1,4 +1,4 @@
-#include <frontend/imgui/imgui_risky.h>
+#include <frontends/imgui/imgui_risky.h>
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -17,9 +17,11 @@
 #include <SDL3/SDL_opengl.h>
 #include <vector>
 
-#include <frontend/imgui/imgui_log.h>
+#include <log/log.hh>
 #include <cpu/registers.h>
 #include <cpu/disassembler.h>
+#include <log/log_term.hh>
+#include <frontends/imgui/imgui_risky.h>
 
 #endif
 
@@ -28,16 +30,19 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-#include <frontend/imgui/imgui_exit.h>
+ImGui_Risky::ImGui_Risky() 
+	: Risky(std::make_shared<ImGuiLogBackend>())
+{
+	imgui_logger = std::dynamic_pointer_cast<ImGuiLogBackend>(Logger::get_backends().back());
+	Logger::set_subsystem("RISKY");
+    Logger::info("Logger initialized\n");
+}
+
 
 void ImGui_Risky::init() {
 }
 
 void ImGui_Risky::run() {
-    ImGuiExitSystem imguiExitSystem;
-    Risky::setExitSystem(&imguiExitSystem);
-	ImGuiLogger::InitializeImGuiLogger();
-
 	// Setup SDL
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 	{
@@ -80,6 +85,7 @@ void ImGui_Risky::run() {
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	bool done = false;
+    static bool suppress_exit_notification = false;
 
 	bool log_debug_window = true;
 	bool core_config_window = true;
@@ -267,28 +273,40 @@ void ImGui_Risky::run() {
 			ImGui::End();
 		}
 
-        if (Risky::requestedExit()) {
-            ImGui::OpenPopup("Exception occurred");
+        if (Risky::is_aborted() && !suppress_exit_notification) {
+            // Set window size and open popup
+            ImGui::SetNextWindowSize(ImVec2(350, 150), ImGuiCond_Appearing);
+            ImGui::OpenPopup("Exit Notification");
+
+            bool open = true;
+            if (ImGui::Begin("Exit Notification", &open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)) {
+                ImGui::Text("The emulator encountered a critical error.");
+
+                // Reset button to clear the aborted state and resume
+                if (ImGui::Button("Reset")) {
+                    Risky::reset_aborted();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+
+                // Close button to exit the emulator
+                if (ImGui::Button("Exit emulator")) {
+                    done = true;
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::End();
+            }
+
+            // If "X" button or other close action is taken, suppress the popup for now
+            if (!open) {
+                suppress_exit_notification = true;
+            }
         }
 
-        if (ImGui::BeginPopupModal("Exception occurred", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("An error has occurred, check the log window!");
-
-            ImGui::Text("Do you want to exit the application?");
-
-            if (ImGui::Button("Yes")) {
-                std::exit(0);
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::Button("No")) {
-                // Close the popup
-                Risky::requested_exit = false;
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImGui::EndPopup();
+        // Reset suppress_exit_notification if aborted state is cleared
+        if (!Risky::is_aborted()) {
+            suppress_exit_notification = false;
         }
 
 		if (disassembly_window)
@@ -311,7 +329,7 @@ void ImGui_Risky::run() {
             }
 		}
 
-        if (true)
+        /*if (true)
         {
             ImGui::Begin("UART Console");
 
@@ -336,7 +354,7 @@ void ImGui_Risky::run() {
             }
 
             ImGui::End();
-        }
+        }*/
 
 		if (core_config_window)
 		{
@@ -451,7 +469,7 @@ void ImGui_Risky::run() {
 
                     if (built_core)
                     {
-                        Logger::Instance().Log("[RISKY] Built " + core_ + " core (XLEN: " + xlen_ + ")");
+                        Logger::info("Built " + core_ + " core (XLEN: " + xlen_ + ")");
 
                         if (extensions.size() > 0)
                         {
@@ -464,11 +482,11 @@ void ImGui_Risky::run() {
                                 extensionString += extensions[i];
                             }
 
-                            Logger::Instance().Log("[RISKY] Extensions: " + extensionString);
+                            Logger::info("Extensions: " + extensionString);
                         }
                         else
                         {
-                            Logger::Instance().Log("[RISKY] Extensions: None (Base spec)");
+                            Logger::info("Extensions: None (Base spec)");
                         }
                     }
 				}
@@ -483,30 +501,7 @@ void ImGui_Risky::run() {
 			ImGui::End();
 		}
 
-
-		if (log_debug_window) {
-			const auto& logMessages = ImGuiLogger::GetImGuiLogBuffer();
-
-			ImGui::Begin("Log Messages");
-
-			for (const auto& logEntry : logMessages) {
-				const std::string &message = logEntry.first;
-				LogLevel level = logEntry.second;
-
-				if (level == LogLevel::Error) {
-					ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", message.c_str());
-				} else if (level == LogLevel::Warning) {
-					ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", message.c_str());
-				} else {
-                    if (level != LogLevel::Uart)
-                    {
-                        ImGui::TextUnformatted(message.c_str());
-                    }
-				}
-			}
-
-			ImGui::End();
-		}
+		imgui_logger->render();
 
         if (ImGuiFileDialog::Instance()->Display("SymbolsLoadDlg")) {
             if (ImGuiFileDialog::Instance()->IsOk()) {

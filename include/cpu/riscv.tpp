@@ -1,9 +1,17 @@
 #include <iostream>
 #include <iomanip>
 
-#include <log/log.h>
+#include <log/log.hh>
 #include <risky.h>
 #include <cstring>
+
+#if __has_include(<format>)
+#include <format>
+using std::format;
+#else
+#include <fmt/format.h>
+using fmt::format;
+#endif
 
 template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
@@ -15,6 +23,8 @@ RISCV<xlen, is_embedded>::RISCV(const std::vector<std::string>& extensions)
 	has_zicsr = false;
     has_zifencei = false;
     has_compressed = false;
+
+	Logger::set_subsystem("CORE");
 
 	for (const std::string& ext : extensions) {
 		if (ext == "A") {
@@ -70,9 +80,9 @@ std::uint32_t RISCV<xlen, is_embedded>::fetch_opcode() {
 template <std::uint8_t xlen, bool is_embedded>
 void RISCV<xlen, is_embedded>::unknown_opcode(std::uint32_t opcode) {
 	std::ostringstream logMessage;
-	logMessage << "[RISKY] Unimplemented opcode: 0x" << format("{:08X}", opcode);
+	logMessage << "Unimplemented opcode: 0x" << format("{:08X}", opcode);
 
-	Logger::Instance().Error(logMessage.str());
+	Logger::error(logMessage.str());
 
-	Risky::exit();
+	Risky::exit(1, Risky::Subsystem::Core);
 }

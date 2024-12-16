@@ -1,15 +1,16 @@
 #include <fstream>
 #include <sstream>
-#include <log/log.h>
+#include <log/log.hh>
 #include <utils/symbols.h>
+#include "risky.h"
 
 std::unordered_map<std::uint32_t, Symbol> parse_symbols_map(const std::string& filename) {
     std::unordered_map<std::uint32_t, Symbol> symbols;
     std::ifstream file(filename);
 
     if (!file.is_open()) {
-        Logger::Instance().Error("[SYMBOLS] parse_symbols_map: Failed to open " + filename);
-        Risky::exit();
+        Logger::error("parse_symbols_map: Failed to open " + filename);
+        Risky::exit(1, Risky::Subsystem::Core);
     }
 
     std::string line;
@@ -26,6 +27,6 @@ std::unordered_map<std::uint32_t, Symbol> parse_symbols_map(const std::string& f
         symbols[address] = { address, type, name };
     }
 
-    Logger::Instance().Log("[SYMBOLS] parse_symbols_map: Symbols parsed");
+    Logger::info("parse_symbols_map: Symbols parsed");
     return symbols;
 }
