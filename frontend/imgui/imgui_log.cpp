@@ -103,6 +103,9 @@ void ImGuiLogBackend::render()
     if (ImGui::BeginTabBar("LogTabs")) {
         if (ImGui::BeginTabItem("Logs")) {
             for (const auto &entry : log_entries) {
+                if (entry.special) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+                }
                 if (entry.bg_color.w > 0) {
                     ImVec2 text_size = ImGui::CalcTextSize(entry.message.c_str());
                     ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
@@ -117,6 +120,8 @@ void ImGuiLogBackend::render()
                 ImGui::PushStyleColor(ImGuiCol_Text, entry.fg_color);
                 ImGui::TextUnformatted(entry.message.c_str());
                 ImGui::PopStyleColor();
+
+                if (entry.special) ImGui::PopStyleVar();
             }
             ImGui::EndTabItem();
         }
