@@ -29,6 +29,11 @@ void Logger::error(const std::string &message)
     log(LogLevel::Error, message);
 }
 
+void Logger::uart(const std::string &message)
+{
+    log(LogLevel::Uart, message);
+}
+
 void Logger::raw(const std::string &message)
 {
     for (const auto &backend : backends)

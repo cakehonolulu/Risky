@@ -9,10 +9,18 @@ void ImGuiLogBackend::log(const std::string &message, LogLevel level)
     ImVec4 fg_color, bg_color;
     parse_colors_from_message(parsed_message, level, fg_color, bg_color);
 
-    log_entries.push_back({level, parsed_message, fg_color, bg_color, false});
+    if (level == LogLevel::Uart) {
+        uart_entries.push_back({level, parsed_message, fg_color, bg_color, false});
 
-    if (log_entries.size() > 1000) {
-        log_entries.pop_front();
+        if (uart_entries.size() > 1000) {
+            uart_entries.pop_front();
+        }
+    } else {
+        log_entries.push_back({level, parsed_message, fg_color, bg_color, false});
+
+        if (log_entries.size() > 1000) {
+            log_entries.pop_front();
+        }
     }
 }
 
@@ -92,29 +100,41 @@ void ImGuiLogBackend::render()
 
     ImGui::Begin("Logger");
 
-    for (const auto &entry : log_entries) {
-        if (entry.special) {
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+    if (ImGui::BeginTabBar("LogTabs")) {
+        if (ImGui::BeginTabItem("Logs")) {
+            for (const auto &entry : log_entries) {
+                if (entry.bg_color.w > 0) {
+                    ImVec2 text_size = ImGui::CalcTextSize(entry.message.c_str());
+                    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+
+                    ImGui::GetWindowDrawList()->AddRectFilled(
+                        cursor_pos,
+                        ImVec2(cursor_pos.x + text_size.x, cursor_pos.y + text_size.y),
+                        ImGui::ColorConvertFloat4ToU32(entry.bg_color)
+                    );
+                }
+
+                ImGui::PushStyleColor(ImGuiCol_Text, entry.fg_color);
+                ImGui::TextUnformatted(entry.message.c_str());
+                ImGui::PopStyleColor();
+            }
+            ImGui::EndTabItem();
         }
 
-        if (entry.bg_color.w > 0) {
-            ImVec2 text_size = ImGui::CalcTextSize(entry.message.c_str());
-            ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+        if (ImGui::BeginTabItem("UART")) {
+            for (const auto &entry : uart_entries) {
+                size_t pos = entry.message.find("UNKNOWN: ");
+                const char *message_to_display = (pos != std::string::npos)
+                    ? entry.message.c_str() + pos + 9
+                    : entry.message.c_str();
 
-            ImGui::GetWindowDrawList()->AddRectFilled(
-                cursor_pos,
-                ImVec2(cursor_pos.x + text_size.x, cursor_pos.y + text_size.y),
-                ImGui::ColorConvertFloat4ToU32(entry.bg_color)
-            );
+                ImGui::PushStyleColor(ImGuiCol_Text, entry.fg_color);
+                ImGui::TextUnformatted(message_to_display);
+                ImGui::PopStyleColor();
+            }
+            ImGui::EndTabItem();
         }
-
-        ImGui::PushStyleColor(ImGuiCol_Text, entry.fg_color);
-        ImGui::TextUnformatted(entry.message.c_str());
-        ImGui::PopStyleColor();
-
-        if (entry.special) {
-            ImGui::PopStyleVar();
-        }
+        ImGui::EndTabBar();
     }
 
     ImGui::End();

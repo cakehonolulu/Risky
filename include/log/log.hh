@@ -12,6 +12,7 @@ enum class LogLevel
     Warn,
     Debug,
     Error,
+    Uart,
 	Raw
 };
 
@@ -31,6 +32,8 @@ class Logger
     static void warn(const std::string &message);
     static void debug(const std::string &message);
     static void error(const std::string &message);
+
+    static void uart(const std::string &message);
 
     static void raw(const std::string &message);
 

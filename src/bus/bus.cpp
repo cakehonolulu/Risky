@@ -115,7 +115,13 @@ void Bus::write8(std::uint32_t address, std::uint8_t value)
 {
 	if (address == UART_THR)
 	{
-        //Logger::Instance().Uart(value);
+		static std::string uart_buffer;
+		if (value == '\n' || uart_buffer.size() >= 256) {
+			Logger::uart(uart_buffer);
+			uart_buffer.clear();
+		} else {
+			uart_buffer += static_cast<char>(value);
+		}
 	}
 	else if (address >= 0x80000000 && address < (0x80000000 + main_memory_size))
 	{
