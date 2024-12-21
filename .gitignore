@@ -42,3 +42,5 @@ CMakeCache.txt
 imgui.ini
 *CMakeFiles*
 *Makefile*
+build/
+.cache/
