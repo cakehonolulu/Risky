@@ -523,7 +523,7 @@ void ImGui_Risky::run() {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
-                core.load_elf(filePathName);
+                core.load_elf<std::uint32_t>(filePathName);
             }
 
             ImGuiFileDialog::Instance()->Close();
@@ -534,7 +534,7 @@ void ImGui_Risky::run() {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
-                core.load_binary(filePathName);
+                core.load_binary<std::uint32_t>(filePathName);
 			}
 
 			ImGuiFileDialog::Instance()->Close();

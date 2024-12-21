@@ -19,7 +19,8 @@ void ImGui_Risky::imgui_registers_window_32(Core *core, bool *debug_window) {
 
 		ImGui::NextColumn();
 
-		ImGui::Text("0x%08X", core->register_32(i));
+		auto reg_value = std::any_cast<std::uint32_t>(core->registers(i));
+		ImGui::Text("0x%08X", reg_value);
 
 		ImGui::NextColumn();
 	}
@@ -50,7 +51,8 @@ void ImGui_Risky::imgui_registers_window_64(Core *core, bool *debug_window) {
 
 		ImGui::NextColumn();
 
-		ImGui::Text("0x%016lX", core->register_64(i));
+		auto reg_value = std::any_cast<std::uint64_t>(core->registers(i));
+		ImGui::Text("0x%016lX", reg_value);
 
 		ImGui::NextColumn();
 	}
@@ -87,7 +89,7 @@ void ImGui_Risky::imgui_disassembly_window_32(Core *core) {
 	static std::uint32_t startPC;
 
 	if (ImGui::Button("Jump")) {
-		core->set_pc_32(jumpToAddress);
+		core->set_pc(jumpToAddress);
 		startPC = std::any_cast<std::uint32_t>(core->pc());
 	}
 

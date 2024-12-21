@@ -4,6 +4,7 @@
 #include <atomic>
 #include <functional>
 #include <chrono>
+#include "risky.h"
 
 class SteppingThread {
 public:

@@ -3,6 +3,7 @@ target_sources(risky
                 risky.cpp
                 log/log.cpp
                 bus/bus.cpp
+                cpu/core.cpp
                 cpu/core/rv32e.cpp
                 cpu/core/rv32i.cpp
                 cpu/core/rv64i.cpp
