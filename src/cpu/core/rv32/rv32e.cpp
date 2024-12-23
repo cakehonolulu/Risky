@@ -1,4 +1,4 @@
-#include <cpu/core/rv32e.h>
+#include <cpu/core/rv32/rv32e.h>
 
 RV32E::RV32E(const std::vector<std::string>& extensions)
 		: RISCV<32, EMBEDDED>(extensions) {

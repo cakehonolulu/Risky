@@ -2,9 +2,9 @@
 
 #include <risky.h>
 #include <cpu/riscv.h>
-#include <cpu/core/rv32i.h>
-#include <cpu/core/rv32e.h>
-#include <cpu/core/rv64i.h>
+#include <cpu/core/rv32/rv32i.h>
+#include <cpu/core/rv32/rv32e.h>
+#include <cpu/core/rv64/rv64i.h>
 #include <cpu/core/core.h>
 #include <utils/symbols.h>
 #include <memory>

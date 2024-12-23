@@ -76,13 +76,3 @@ template <std::uint8_t xlen, bool is_embedded>
 std::uint32_t RISCV<xlen, is_embedded>::fetch_opcode() {
 	return bus.read32(pc);
 }
-
-template <std::uint8_t xlen, bool is_embedded>
-void RISCV<xlen, is_embedded>::unknown_opcode(std::uint32_t opcode) {
-	std::ostringstream logMessage;
-	logMessage << "Unimplemented opcode: 0x" << format("{:08X}", opcode);
-
-	Logger::error(logMessage.str());
-
-	Risky::exit(1, Risky::Subsystem::Core);
-}

@@ -4,8 +4,10 @@ target_sources(risky
                 log/log.cpp
                 bus/bus.cpp
                 cpu/core.cpp
-                cpu/core/rv32e.cpp
-                cpu/core/rv32i.cpp
-                cpu/core/rv64i.cpp
+                cpu/core/rv32/rv32e.cpp
+                cpu/core/rv32/rv32i.cpp
+                cpu/core/rv32/backends/rv32i_jit.cpp
+                cpu/core/rv32/backends/rv32i_interpreter.cpp
+                cpu/core/rv64/rv64i.cpp
                 cpu/disassembler.cpp
                 utils/symbols.cpp)

@@ -46,7 +46,6 @@ public:
 	void set_step_func(std::function<void()> step_func);
 
 	std::uint32_t fetch_opcode();
-	void unknown_opcode(std::uint32_t opcode);
 
 	typename std::conditional<(xlen == 32 && xlen != 16), std::uint32_t,
 			typename std::conditional<(xlen == 64), std::uint64_t,
@@ -73,10 +72,10 @@ public:
 	>::type csr_read(std::uint16_t csr) {
 		if (csr < 4096) {
 			return csrs[csr];
-		} else {
-			Logger::error("csr_read: Invalid CSR register read: " + std::to_string(csr));
-			Risky::exit(1, Risky::Subsystem::Core);
 		}
+		
+		Logger::error("csr_read: Invalid CSR register read: " + std::to_string(csr));
+		return Risky::exit(1, Risky::Subsystem::Core);
 	}
 
 	void csr_write(std::uint16_t csr, typename std::conditional<(xlen == 32), std::uint32_t,

@@ -5,10 +5,12 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 #include "ImGuiFileDialog.h"
-#include <cpu/core/rv32e.h>
-#include <cpu/core/rv32i.h>
-#include <cpu/core/rv64i.h>
+#include <cpu/core/rv32/rv32e.h>
+#include <cpu/core/rv32/rv32i.h>
+#include <cpu/core/rv64/rv64i.h>
 #include <cpu/core/core.h>
+#include <cpu/core/rv32/backends/rv32i_interpreter.h>
+#include <cpu/core/rv32/backends/rv32i_jit.h>
 #include <cstdio>
 #include <SDL3/SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -110,6 +112,9 @@ void ImGui_Risky::run() {
     bool loaded_binary = false;
     symbols_loaded = false;
     Core core;
+
+	// Add a variable to select the execution strategy
+	int selected_execution_strategy = 0; // 0: Interpreter, 1: JIT
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -409,13 +414,17 @@ void ImGui_Risky::run() {
             ImGui::SameLine();
             ImGui::Checkbox("C (Compressed)", &has_C_extension);
 
-
 			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
 			ImGui::SameLine();
 			ImGui::Checkbox("Zifencei", &has_Zifencei_extension);
 
 			ImGui::Text("MMU Emulation:");
 			ImGui::Checkbox("None (nommu)", &nommu);
+
+			ImGui::Text("Execution Strategy:");
+			ImGui::RadioButton("Interpreter", &selected_execution_strategy, 0);
+			ImGui::SameLine();
+			ImGui::RadioButton("JIT", &selected_execution_strategy, 1);
 
 			if (core_.empty())
 			{
@@ -438,7 +447,26 @@ void ImGui_Risky::run() {
 						// RV32I
 						case 0:
 						{
-							riscv_core_32 = std::make_unique<RV32I>(extensions);
+							riscv_core_32 = std::make_unique<RV32I>(extensions, nullptr);
+							if (riscv_core_32 == nullptr)
+							{
+								Logger::error("Failed to create RV32I core!");
+								break;
+							}
+							std::unique_ptr<CoreBackend> backend;
+							if (selected_execution_strategy == 0) {
+								backend = std::make_unique<RV32IInterpreter>(riscv_core_32.get());
+							} else {
+								backend = std::make_unique<RV32IJIT>(riscv_core_32.get());
+							}
+
+							if (!backend->ready)
+							{
+								Logger::error("Failed to create RV32I backend!");
+								break;
+							}
+
+							riscv_core_32->set_backend(std::move(backend));
                             core.assign(riscv_core_32.get());
 							core_ = "RV32I";
 							xlen_ = "32";

@@ -1,4 +1,4 @@
-#include <cpu/core/rv64i.h>
+#include <cpu/core/rv64/rv64i.h>
 
 RV64I::RV64I(const std::vector<std::string>& extensions)
 		: RISCV<64>(extensions) {

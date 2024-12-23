@@ -7,11 +7,15 @@
 #include <elf.h>
 #include <utils/core_thread.h>
 #include <cpu/riscv.h>
+#include <cpu/core/rv32/rv32i.h>
+#include <cpu/core/rv32/backends/rv32i_interpreter.h>
+#include <cpu/core/rv32/backends/rv32i_jit.h>
+#include <cpu/core/backend.h>
 
 // Define Core class
 class Core {
 public:
-	Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
+    Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
 
     // Function pointers for pc, registers, and csrs
     std::function<std::any()> pc;
@@ -20,7 +24,7 @@ public:
     std::function<std::uint32_t(std::uint32_t)> bus_read32;
     std::function<void(std::uint32_t, std::uint32_t)> bus_write32;
     std::function<void()> step;
-	std::function<void()> stop;
+    std::function<void()> stop;
     std::function<void()> reset;
     std::function<void()> run;
 
@@ -33,7 +37,7 @@ public:
         step = [riscv]() { riscv->step(); };
         reset = [riscv]() { riscv->reset(); };
         run = [riscv]() { riscv->run(); };
-	    stop = [riscv]() { riscv->stop(); };
+        stop = [riscv]() { riscv->stop(); };
 
         pc = [riscv]() -> std::any { return std::any(riscv->pc); };
         registers = [riscv](size_t index) -> std::any { return std::any(riscv->registers[index]); };
@@ -91,26 +95,26 @@ public:
         return (this->xlen == xlen) && (this->is_embedded == is_embedded);
     }
 
-	void start_() {
-		steppingThread.start([this]() { this->step(); });
-	}
+    void start_() {
+        steppingThread.start([this]() { this->step(); });
+    }
 
-	void stop_() {
-		steppingThread.stop();
-	}
+    void stop_() {
+        steppingThread.stop();
+    }
 
-	bool thread_running() const {
-		return steppingThread.isRunning();
-	}
+    bool thread_running() const {
+        return steppingThread.isRunning();
+    }
 
-	bool check_thread() {
-		return steppingThread.checkAndClearUpdateFlag();
-	}
+    bool check_thread() {
+        return steppingThread.checkAndClearUpdateFlag();
+    }
 
 private:
-	// Pointer to the current RISCV instance
+    // Pointer to the current RISCV instance
     std::any riscv;
     std::uint8_t xlen;
     bool is_embedded;
-	SteppingThread steppingThread;
+    SteppingThread steppingThread;
 };
