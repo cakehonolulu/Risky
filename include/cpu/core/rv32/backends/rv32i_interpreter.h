@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cpu/core/core.h>
+#include <cpu/core/backend.h>
 #include <cstdint>
 #include <string>
 

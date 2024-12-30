@@ -1,5 +1,10 @@
 #pragma once
 
+enum class EmulationType {
+    Interpreter,
+    JIT
+};
+
 #include <functional>
 #include <any>
 #include <cstdint>
@@ -8,14 +13,15 @@
 #include <utils/core_thread.h>
 #include <cpu/riscv.h>
 #include <cpu/core/rv32/rv32i.h>
+#include <cpu/core/rv32/rv32e.h>
+#include <cpu/core/rv64/rv64i.h>
 #include <cpu/core/rv32/backends/rv32i_interpreter.h>
 #include <cpu/core/rv32/backends/rv32i_jit.h>
-#include <cpu/core/backend.h>
 
 // Define Core class
 class Core {
 public:
-    Core() : riscv(nullptr), xlen(0), is_embedded(false) {}
+    Core() : riscv(nullptr), xlen(0), is_embedded(false), emulationType(EmulationType::Interpreter) {}
 
     // Function pointers for pc, registers, and csrs
     std::function<std::any()> pc;
@@ -30,7 +36,9 @@ public:
 
     // Assign a new RISCV instance to Core
     template <std::uint8_t xlen, bool is_embedded>
-    void assign(RISCV<xlen, is_embedded>* riscv) {
+    void assign(RISCV<xlen, is_embedded>* riscv, EmulationType emulationType) {
+        this->emulationType = emulationType;
+
         // Assign function pointers based on xlen
         bus_read32 = [riscv](std::uint32_t address) -> std::uint32_t { return std::uint32_t(riscv->bus.read32(address)); };
         bus_write32 = [riscv](std::uint32_t address, std::uint32_t value) { riscv->bus.write32(address, value); };
@@ -111,10 +119,15 @@ public:
         return steppingThread.checkAndClearUpdateFlag();
     }
 
+    EmulationType get_emulation_type() const {
+        return emulationType;
+    }
+
 private:
     // Pointer to the current RISCV instance
     std::any riscv;
     std::uint8_t xlen;
     bool is_embedded;
+    EmulationType emulationType;
     SteppingThread steppingThread;
 };

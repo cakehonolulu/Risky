@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.26)
-project(risky LANGUAGES CXX)
+project(risky LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
-if (ASAN)
+if(ASAN)
     add_compile_options(-fsanitize=address,leak,undefined,pointer-compare,pointer-subtract -g)
     add_link_options(-fsanitize=address,leak,undefined,pointer-compare,pointer-subtract)
 endif()
@@ -25,6 +25,8 @@ if(NOT USE_IMGUI_FRONTEND AND NOT USE_HEADLESS_FRONTEND AND NOT USE_RAYLIB_FRONT
     message(FATAL_ERROR "No frontend selected, please enable ImGui, Raylib, Headless frontends, or testing!")
 endif()
 
+find_package(LLVM REQUIRED CONFIG)
+
 # Specify the main executable
 add_executable(risky)
 
@@ -43,4 +45,5 @@ else()
 endif()
 
 # Add the required headers to the project (Found in include/)
-target_include_directories(risky PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(risky PRIVATE ${PROJECT_SOURCE_DIR}/include ${LLVM_INCLUDE_DIRS})
+target_link_libraries(risky PRIVATE LLVM)

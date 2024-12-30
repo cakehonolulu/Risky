@@ -1,6 +1,6 @@
 #include <cpu/core/rv64/rv64i.h>
 
-RV64I::RV64I(const std::vector<std::string>& extensions)
+RV64I::RV64I(const std::vector<std::string>& extensions, EmulationType type)
 		: RISCV<64>(extensions) {
 	// Constructor implementation for rv64i
 }

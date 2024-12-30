@@ -1,6 +1,6 @@
 #include <cpu/core/rv32/rv32e.h>
 
-RV32E::RV32E(const std::vector<std::string>& extensions)
+RV32E::RV32E(const std::vector<std::string>& extensions, EmulationType type)
 		: RISCV<32, EMBEDDED>(extensions) {
 	// Constructor implementation for rv32e
 }

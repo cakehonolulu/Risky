@@ -12,24 +12,24 @@ class TerminalLogBackend : public LogBackend
         switch (level)
         {
         case LogLevel::Info:
-            color = BOLDWHITE;
+            color = _BOLDWHITE;
             break;
         case LogLevel::Warn:
-            color = BOLDYELLOW;
+            color = _BOLDYELLOW;
             break;
         case LogLevel::Debug:
-            color = BOLDCYAN;
+            color = _BOLDCYAN;
             break;
         case LogLevel::Error:
-            color = BOLDRED;
+            color = _BOLDRED;
             break;
         default:
-            color = WHITE;
+            color = _WHITE;
         }
 
         if (level != LogLevel::Raw)
 		{
-			std::cout << color << message << RESET << std::endl;
+			std::cout << color << message << _RESET << std::endl;
 		}
 		else
 		{

@@ -9,8 +9,6 @@
 #include <cpu/core/rv32/rv32i.h>
 #include <cpu/core/rv64/rv64i.h>
 #include <cpu/core/core.h>
-#include <cpu/core/rv32/backends/rv32i_interpreter.h>
-#include <cpu/core/rv32/backends/rv32i_jit.h>
 #include <cstdio>
 #include <SDL3/SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -97,7 +95,7 @@ void ImGui_Risky::run() {
 	IGFD::FileDialogConfig config; config.path = ".";
 
 	// 0: RV32I, 1: RV32E, 2: RV64I
-	int selected_riscv_variant = 3;
+	int selected_riscv_variant = 0;
 	std::string core_;
 	std::string xlen_;
 	bool has_M_extension = false;
@@ -112,9 +110,7 @@ void ImGui_Risky::run() {
     bool loaded_binary = false;
     symbols_loaded = false;
     Core core;
-
-	// Add a variable to select the execution strategy
-	int selected_execution_strategy = 0; // 0: Interpreter, 1: JIT
+    EmulationType selected_emulation_type = EmulationType::Interpreter;
 
 #ifdef __EMSCRIPTEN__
 	// For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
@@ -414,6 +410,7 @@ void ImGui_Risky::run() {
             ImGui::SameLine();
             ImGui::Checkbox("C (Compressed)", &has_C_extension);
 
+
 			ImGui::Checkbox("Zicsr", &has_Zicsr_extension);
 			ImGui::SameLine();
 			ImGui::Checkbox("Zifencei", &has_Zifencei_extension);
@@ -421,10 +418,10 @@ void ImGui_Risky::run() {
 			ImGui::Text("MMU Emulation:");
 			ImGui::Checkbox("None (nommu)", &nommu);
 
-			ImGui::Text("Execution Strategy:");
-			ImGui::RadioButton("Interpreter", &selected_execution_strategy, 0);
-			ImGui::SameLine();
-			ImGui::RadioButton("JIT", &selected_execution_strategy, 1);
+            ImGui::Text("Emulation Type:");
+            ImGui::RadioButton("Interpreter", reinterpret_cast<int*>(&selected_emulation_type), static_cast<int>(EmulationType::Interpreter));
+            ImGui::SameLine();
+            ImGui::RadioButton("Recompiler (LLVM)", reinterpret_cast<int*>(&selected_emulation_type), static_cast<int>(EmulationType::JIT));
 
 			if (core_.empty())
 			{
@@ -447,27 +444,8 @@ void ImGui_Risky::run() {
 						// RV32I
 						case 0:
 						{
-							riscv_core_32 = std::make_unique<RV32I>(extensions, nullptr);
-							if (riscv_core_32 == nullptr)
-							{
-								Logger::error("Failed to create RV32I core!");
-								break;
-							}
-							std::unique_ptr<CoreBackend> backend;
-							if (selected_execution_strategy == 0) {
-								backend = std::make_unique<RV32IInterpreter>(riscv_core_32.get());
-							} else {
-								backend = std::make_unique<RV32IJIT>(riscv_core_32.get());
-							}
-
-							if (!backend->ready)
-							{
-								Logger::error("Failed to create RV32I backend!");
-								break;
-							}
-
-							riscv_core_32->set_backend(std::move(backend));
-                            core.assign(riscv_core_32.get());
+							riscv_core_32 = std::make_unique<RV32I>(extensions, selected_emulation_type);
+                            core.assign(riscv_core_32.get(), selected_emulation_type);
 							core_ = "RV32I";
 							xlen_ = "32";
                             built_core = true;
@@ -476,8 +454,8 @@ void ImGui_Risky::run() {
                         // RV32E
 						case 1:
 						{
-							riscv_core_32e = std::make_unique<RV32E>(extensions);
-                            core.assign(riscv_core_32e.get());
+							riscv_core_32e = std::make_unique<RV32E>(extensions, selected_emulation_type);
+                            core.assign(riscv_core_32e.get(), selected_emulation_type);
 							core_ = "RV32E";
 							xlen_ = "32";
                             built_core = true;
@@ -486,8 +464,8 @@ void ImGui_Risky::run() {
                         // RV64I
 						case 2:
 						{
-							riscv_core_64 = std::make_unique<RV64I>(extensions);
-                            core.assign(riscv_core_64.get());
+							riscv_core_64 = std::make_unique<RV64I>(extensions, selected_emulation_type);
+                            core.assign(riscv_core_64.get(), selected_emulation_type);
 							core_ = "RV64I";
 							xlen_ = "64";
                             built_core = true;

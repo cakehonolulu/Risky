@@ -6,8 +6,14 @@
 #include <bitset>
 #include <cpu/core/core.h>
 
-RV32I::RV32I(const std::vector<std::string>& extensions, std::unique_ptr<CoreBackend> backend)
+RV32I::RV32I(const std::vector<std::string>& extensions, EmulationType type)
     : RISCV<32>(extensions), backend(std::move(backend)) {
+    if (type == EmulationType::JIT) {
+        backend = std::make_unique<RV32IJIT>(this);
+    } else {
+        backend = std::make_unique<RV32IInterpreter>(this);
+    }
+    
     set_step_func([this] { step(); });
 }
 
