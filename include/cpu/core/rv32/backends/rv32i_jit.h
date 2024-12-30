@@ -11,21 +11,16 @@
 
 class RV32I;
 
-class CompiledBlock {
-public:
-    uint32_t start_pc;
-    uint32_t end_pc;
-    void* code_ptr;
-    uint64_t last_used;
-    bool contains_branch;
-};
-
-class RV32IJIT : public CoreBackend {
+class RV32IJIT : public CoreBackend, public JITBackend {
 public:
     RV32IJIT(RV32I* core);
     ~RV32IJIT();
     void execute_opcode(std::uint32_t opcode) override;
     void step();
+
+    const std::unordered_map<uint32_t, CompiledBlock>& get_block_cache() const override {
+        return block_cache;
+    }
 
 private:
     static constexpr size_t CACHE_SIZE = 1024;

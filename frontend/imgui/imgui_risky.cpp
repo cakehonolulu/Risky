@@ -92,6 +92,7 @@ void ImGui_Risky::run() {
 	bool core_config_window = true;
 	bool cpu_reg_debug_window = false;
 	bool disassembly_window = false;
+	bool llvm_ir_blocks_window = false;
 	IGFD::FileDialogConfig config; config.path = ".";
 
 	// 0: RV32I, 1: RV32E, 2: RV64I
@@ -225,6 +226,7 @@ void ImGui_Risky::run() {
 				static bool menu_toggle_cpu_reg_window = false;
 				static bool menu_toggle_log_window = true;
 				static bool menu_toggle_disassembler_window = false;
+				static bool menu_toggle_llvm_ir_blocks_window = false;
 
                 ImGui::MenuItem("Log", "", &menu_toggle_log_window, true);
 
@@ -232,7 +234,12 @@ void ImGui_Risky::run() {
                 {
                     ImGui::MenuItem("CPU Registers", "", &menu_toggle_cpu_reg_window, true);
                     ImGui::MenuItem("Disassembler", "", &menu_toggle_disassembler_window, true);
-                }
+                
+					if (core.get_emulation_type() == EmulationType::JIT)
+					{
+						ImGui::MenuItem("LLVM IR Blocks", "", &menu_toggle_llvm_ir_blocks_window, true);
+					}
+				}
 
 				if (menu_toggle_cpu_reg_window)
 				{
@@ -260,6 +267,15 @@ void ImGui_Risky::run() {
 				{
 					disassembly_window = false;
 				}
+
+				if (menu_toggle_llvm_ir_blocks_window)
+				{
+                    llvm_ir_blocks_window = true;
+                }
+				else
+				{
+                    llvm_ir_blocks_window = false;
+                }
 
 				ImGui::EndMenu();
 			}
@@ -321,6 +337,10 @@ void ImGui_Risky::run() {
             }
 		}
 
+		if (llvm_ir_blocks_window) {
+			imgui_llvm_ir_blocks_window(&core);
+        }
+
 		if (cpu_reg_debug_window)
 		{
             if (core.get_xlen() == 32)
@@ -332,33 +352,6 @@ void ImGui_Risky::run() {
                 imgui_registers_window_64(&core, &cpu_reg_debug_window);
             }
 		}
-
-        /*if (true)
-        {
-            ImGui::Begin("UART Console");
-
-            const std::vector<uint8_t>& uartData = ImGuiLogger::GetImGuiUARTBuffer();
-
-            std::string currentLine; // Store characters until a newline is encountered
-            for (const auto& byte : uartData) {
-                if (byte == '\n') {
-                    // Output the current line
-                    ImGui::Text("%s", currentLine.c_str());
-                    // Clear the line for the next iteration
-                    currentLine.clear();
-                } else {
-                    // Add the character to the current line
-                    currentLine += byte;
-                }
-            }
-
-            // Output any remaining characters if the last line doesn't end with a newline
-            if (!currentLine.empty()) {
-                ImGui::Text("%s", currentLine.c_str());
-            }
-
-            ImGui::End();
-        }*/
 
 		if (core_config_window)
 		{
@@ -565,4 +558,41 @@ void ImGui_Risky::run() {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+void ImGui_Risky::imgui_llvm_ir_blocks_window(Core *core) {
+    ImGui::Begin("LLVM IR Blocks");
+
+    JITBackend* jit_backend_ptr = nullptr;
+
+    if (riscv_core_32) {
+        jit_backend_ptr = dynamic_cast<JITBackend*>(riscv_core_32->get_backend());
+    } else if (riscv_core_32e) {
+        //jit_backend_ptr = dynamic_cast<JITBackend*>(riscv_core_32e->get_backend());
+    } else if (riscv_core_64) {
+        //jit_backend_ptr = dynamic_cast<JITBackend*>(riscv_core_64->get_backend());
+    }
+
+    if (jit_backend_ptr) {
+        const auto& block_cache = jit_backend_ptr->get_block_cache();
+
+        for (const auto& block : block_cache) {
+			if (core->get_xlen() == 32)
+			{
+				ImGui::Text("Block at PC: 0x%08X", block.first);
+			}
+			else if (core->get_xlen() == 64)
+			{
+				ImGui::Text("Block at PC: 0x%016X", block.first)
+			}
+            
+            ImGui::Separator();
+            ImGui::Text("%p", block.second.code_ptr);
+            ImGui::Separator();
+        }
+    } else {
+        ImGui::Text("No JIT backend available.");
+    }
+
+    ImGui::End();
 }

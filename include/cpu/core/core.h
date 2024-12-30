@@ -123,6 +123,10 @@ public:
         return emulationType;
     }
 
+    std::any get_riscv() const {
+        return riscv;
+    }
+
 private:
     // Pointer to the current RISCV instance
     std::any riscv;

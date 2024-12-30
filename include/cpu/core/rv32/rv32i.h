@@ -11,6 +11,10 @@ public:
     void step();
     void set_backend(std::unique_ptr<CoreBackend> backend);
 
+    CoreBackend *get_backend() {
+        return backend.get();
+    }
+
 private:
     void execute_opcode(std::uint32_t opcode);
     std::unique_ptr<CoreBackend> backend;
