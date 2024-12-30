@@ -32,6 +32,8 @@ public:
 	RISCV(const std::vector<std::string>& extensions);
 	~RISCV();
 
+	using addr_t = std::conditional_t<xlen == 32, uint32_t, std::conditional_t<xlen == 64, uint64_t, __uint128_t>>;
+
 	Bus bus;
 
 	std::function<void()> step;
@@ -44,6 +46,7 @@ public:
 	void set_step_func(std::function<void()> step_func);
 
 	std::uint32_t fetch_opcode();
+	std::uint32_t fetch_opcode(addr_t pc);
 
 	typename std::conditional<(xlen == 32 && xlen != 16), std::uint32_t,
 			typename std::conditional<(xlen == 64), std::uint64_t,

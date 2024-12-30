@@ -76,3 +76,10 @@ template <std::uint8_t xlen, bool is_embedded>
 std::uint32_t RISCV<xlen, is_embedded>::fetch_opcode() {
 	return bus.read32(pc);
 }
+
+template <std::uint8_t xlen, bool is_embedded>
+std::uint32_t RISCV<xlen, is_embedded>::fetch_opcode(addr_t pc) {
+	static_assert(xlen == 32 || xlen == 64 || xlen == 128, "Unsupported XLEN");
+    
+	return bus.read32(pc);
+}
