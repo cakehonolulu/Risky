@@ -11,6 +11,7 @@ class RV32IInterpreter : public CoreBackend {
 public:
     RV32IInterpreter(RV32I* core);
     void execute_opcode(std::uint32_t opcode) override;
+    void step() override;
 
 private:
     RV32I* core;

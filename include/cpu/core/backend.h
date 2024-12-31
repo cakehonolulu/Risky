@@ -22,6 +22,7 @@ class CoreBackend {
 public:
     virtual ~CoreBackend() = default;
     virtual void execute_opcode(std::uint32_t opcode) = 0;
+    virtual void step() = 0;
 
     bool ready = false;
 };

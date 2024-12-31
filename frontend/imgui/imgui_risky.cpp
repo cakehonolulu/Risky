@@ -583,7 +583,7 @@ void ImGui_Risky::imgui_llvm_ir_blocks_window(Core *core) {
 			}
 			else if (core->get_xlen() == 64)
 			{
-				ImGui::Text("Block at PC: 0x%016X", block.first)
+				ImGui::Text("Block at PC: 0x%016X", block.first);
 			}
             
             ImGui::Separator();

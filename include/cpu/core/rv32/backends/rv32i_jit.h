@@ -16,7 +16,7 @@ public:
     RV32IJIT(RV32I* core);
     ~RV32IJIT();
     void execute_opcode(std::uint32_t opcode) override;
-    void step();
+    void step() override;
 
     const std::unordered_map<uint32_t, CompiledBlock>& get_block_cache() const override {
         return block_cache;

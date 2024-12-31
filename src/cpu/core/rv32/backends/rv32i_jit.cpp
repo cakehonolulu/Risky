@@ -60,6 +60,13 @@ RV32IJIT::~RV32IJIT() {
     }
 }
 
+void RV32IJIT::step() {
+    std::uint32_t opcode = core->fetch_opcode();
+    execute_opcode(opcode);
+    core->registers[0] = 0;
+    core->pc += 4;
+}
+
 void RV32IJIT::execute_opcode(std::uint32_t opcode) {
     uint32_t pc = core->pc;
     

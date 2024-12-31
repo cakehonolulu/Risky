@@ -10,6 +10,13 @@ RV32IInterpreter::RV32IInterpreter(RV32I* core) : core(core) {
     ready = true;
 }
 
+void RV32IInterpreter::step() {
+    std::uint32_t opcode = core->fetch_opcode();
+    execute_opcode(opcode);
+    core->registers[0] = 0;
+    core->pc += 4;
+}
+
 void RV32IInterpreter::execute_opcode(std::uint32_t opcode) {
     std::uint8_t opcode_rv32 = 0;
     std::uint16_t opcode_ = 0;

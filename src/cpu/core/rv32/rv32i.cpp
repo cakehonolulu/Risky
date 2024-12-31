@@ -14,14 +14,7 @@ RV32I::RV32I(const std::vector<std::string>& extensions, EmulationType type)
         backend = std::make_unique<RV32IInterpreter>(this);
     }
     
-    set_step_func([this] { step(); });
-}
-
-void RV32I::step() {
-    std::uint32_t opcode = fetch_opcode();
-    execute_opcode(opcode);
-    registers[0] = 0;
-    pc += 4;
+    set_step_func([this] { backend->step(); });
 }
 
 void RV32I::execute_opcode(std::uint32_t opcode) {
