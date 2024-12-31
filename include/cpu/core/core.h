@@ -104,7 +104,7 @@ public:
     }
 
     void start_() {
-        steppingThread.start([this]() { this->step(); });
+        steppingThread.start([this]() { this->run(); });
     }
 
     void stop_() {

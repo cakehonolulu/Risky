@@ -15,6 +15,7 @@ RV32I::RV32I(const std::vector<std::string>& extensions, EmulationType type)
     }
     
     set_step_func([this] { backend->step(); });
+    set_run_func([this] { backend->run(); });
 }
 
 void RV32I::execute_opcode(std::uint32_t opcode) {

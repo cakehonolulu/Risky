@@ -37,13 +37,15 @@ public:
 	Bus bus;
 
 	std::function<void()> step;
-	void run();
+	std::function<void()> run;
+	void run_();
 	void step_();
 	void stop();
 	bool isRunning() const { return running; }
 	void reset();
 
 	void set_step_func(std::function<void()> step_func);
+	void set_run_func(std::function<void()> run_func);
 
 	std::uint32_t fetch_opcode();
 	std::uint32_t fetch_opcode(addr_t pc);

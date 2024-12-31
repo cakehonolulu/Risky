@@ -17,6 +17,7 @@ public:
     ~RV32IJIT();
     void execute_opcode(std::uint32_t opcode) override;
     void step() override;
+    void run() override;
 
     const std::unordered_map<uint32_t, CompiledBlock>& get_block_cache() const override {
         return block_cache;
@@ -27,8 +28,9 @@ private:
     std::unordered_map<uint32_t, CompiledBlock> block_cache;
     std::vector<uint32_t> lru_queue;
     uint64_t execution_count = 0;
+    bool single_instruction_mode = false;
 
-    CompiledBlock* compile_block(uint32_t pc);
+    CompiledBlock* compile_block(uint32_t pc, bool single_instruction);
     void link_blocks();
     void evict_oldest_block();
     CompiledBlock* find_block(uint32_t pc);

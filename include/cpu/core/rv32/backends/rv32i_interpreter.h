@@ -12,6 +12,7 @@ public:
     RV32IInterpreter(RV32I* core);
     void execute_opcode(std::uint32_t opcode) override;
     void step() override;
+    void run() override;
 
 private:
     RV32I* core;

@@ -61,6 +61,15 @@ RV32IJIT::~RV32IJIT() {
 }
 
 void RV32IJIT::step() {
+    single_instruction_mode = true;
+    std::uint32_t opcode = core->fetch_opcode();
+    execute_opcode(opcode);
+    core->registers[0] = 0;
+    core->pc += 4;
+    single_instruction_mode = false;
+}
+
+void RV32IJIT::run() {
     std::uint32_t opcode = core->fetch_opcode();
     execute_opcode(opcode);
     core->registers[0] = 0;
@@ -77,7 +86,7 @@ void RV32IJIT::execute_opcode(std::uint32_t opcode) {
     if (!block) {
         Logger::info("Block not found, compiling new block at PC: " + format("0x{:08X}", pc));
         // Compile new block if not found
-        block = compile_block(pc);
+        block = compile_block(pc, single_instruction_mode);
         if (!block) {
             Logger::error("Failed to compile block at PC: " + format("0x{:08X}", pc));
             return;
@@ -99,7 +108,7 @@ void RV32IJIT::execute_opcode(std::uint32_t opcode) {
                  ", returned " + std::to_string(result));
 }
 
-CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc) {
+CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instruction) {
     uint32_t current_pc = start_pc;
     uint32_t end_pc = start_pc; // Initialize end_pc to start_pc
     
@@ -134,7 +143,7 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc) {
         }
 
         // Check if opcode is a branch or jump
-        if (is_branch) {
+        if (is_branch || single_instruction) {
             end_pc = current_pc_;
             break;
         }

@@ -45,7 +45,7 @@ template <std::uint8_t xlen, bool is_embedded>
 RISCV<xlen, is_embedded>::~RISCV() {}
 
 template <std::uint8_t xlen, bool is_embedded>
-void RISCV<xlen, is_embedded>::run() {
+void RISCV<xlen, is_embedded>::run_() {
 	running = true;
 }
 
@@ -70,6 +70,11 @@ void RISCV<xlen, is_embedded>::reset() {
 template <std::uint8_t XLEN, bool is_embedded>
 void RISCV<XLEN, is_embedded>::set_step_func(std::function<void()> step_func) {
 	step = std::move(step_func);
+}
+
+template <std::uint8_t XLEN, bool is_embedded>
+void RISCV<XLEN, is_embedded>::set_run_func(std::function<void()> run_func) {
+	run = std::move(run_func);
 }
 
 template <std::uint8_t xlen, bool is_embedded>
