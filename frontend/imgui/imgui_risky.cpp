@@ -577,18 +577,17 @@ void ImGui_Risky::imgui_llvm_ir_blocks_window(Core *core) {
         const auto& block_cache = jit_backend_ptr->get_block_cache();
 
         for (const auto& block : block_cache) {
-			if (core->get_xlen() == 32)
-			{
-				ImGui::Text("Block at PC: 0x%08X", block.first);
-			}
-			else if (core->get_xlen() == 64)
-			{
-				ImGui::Text("Block at PC: 0x%016X", block.first);
-			}
-            
-            ImGui::Separator();
-            ImGui::Text("%p", block.second.code_ptr);
-            ImGui::Separator();
+            if (ImGui::TreeNode((void*)(intptr_t)block.first, "Block at PC: 0x%08X", block.first)) {
+                ImGui::Text("Start PC: 0x%08X", block.second.start_pc);
+                ImGui::Text("End PC: 0x%08X", block.second.end_pc);
+                ImGui::Text("Contains Branch: %s", block.second.contains_branch ? "Yes" : "No");
+                ImGui::Text("Last Used: %llu", block.second.last_used);
+                ImGui::Text("Code Pointer: %p", block.second.code_ptr);
+                ImGui::Separator();
+                ImGui::Text("LLVM IR:");
+                ImGui::TextWrapped("%s", block.second.llvm_ir.c_str());
+                ImGui::TreePop();
+            }
         }
     } else {
         ImGui::Text("No JIT backend available.");

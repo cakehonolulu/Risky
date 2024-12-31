@@ -9,6 +9,11 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/Support/raw_ostream.h>
+#include <sstream>
 
 RV32IJIT::RV32IJIT(RV32I* core) : core(core) {
     // Initialize LLVM components
@@ -104,8 +109,7 @@ void RV32IJIT::execute_opcode(std::uint32_t opcode) {
     auto exec_fn = (int (*)())block->code_ptr;
     int result = exec_fn();
     
-    Logger::info("Executed block at PC " + format("0x{:08X}", pc) + 
-                 ", returned " + std::to_string(result));
+    Logger::info("Executed block at PC " + format("0x{:08X}", pc));
 }
 
 CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instruction) {
@@ -153,7 +157,12 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
         sleep(1);
     }
 
-    builder->CreateRet(builder->getInt32(0)); // Example return
+    builder->CreateRetVoid();
+
+    std::string str;
+    llvm::raw_string_ostream os(str);
+    new_module->print(os, nullptr);
+    os.flush();
 
     // Add module to execution engine
     if (!executionEngine) {
@@ -164,7 +173,7 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
     executionEngine->addModule(std::move(new_module));
     executionEngine->finalizeObject();
     
-    auto exec_fn = (int (*)())executionEngine->getPointerToFunction(func);
+    auto exec_fn = (void (*)())executionEngine->getPointerToFunction(func);
     if (!exec_fn) {
         Logger::error("Failed to JIT compile function");
         return nullptr;
@@ -176,7 +185,8 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
     block->end_pc = end_pc;
     block->code_ptr = (void*)exec_fn;
     block->last_used = execution_count;
-    block->contains_branch = true; // Example, should be set based on actual code
+    block->contains_branch = false;
+    block->llvm_ir = str;
 
     return block;
 }

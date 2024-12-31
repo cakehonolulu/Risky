@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 
 class CompiledBlock {
@@ -10,6 +11,7 @@ public:
     void* code_ptr;
     uint64_t last_used;
     bool contains_branch;
+    std::string llvm_ir;
 };
 
 class JITBackend {
