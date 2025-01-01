@@ -4,6 +4,7 @@
 #include <cpu/core/backend.h>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 class RV32I;
 
@@ -16,6 +17,20 @@ public:
 
 private:
     RV32I* core;
+
+    typedef void (RV32IInterpreter::*OpcodeHandler)(std::uint32_t);
+
+    struct OpcodeHandlerEntry {
+        std::unordered_map<std::uint8_t, OpcodeHandler> funct3_map;
+        OpcodeHandler single_handler = nullptr;
+    };
+
+    std::unordered_map<std::uint8_t, OpcodeHandlerEntry> opcode_table;
+
+    void initialize_opcode_table();
+
+    void handle_amo(std::uint32_t opcode);
+    void handle_op(std::uint32_t opcode);
 
     void rv32i_caddi(std::uint16_t opcode);
     void rv32i_auipc(std::uint32_t opcode);

@@ -5,9 +5,11 @@
 #include <sstream>
 #include <bitset>
 #include <cpu/core/core.h>
+#include <unordered_map>
 
 RV32IInterpreter::RV32IInterpreter(RV32I* core) : core(core) {
     ready = true;
+    initialize_opcode_table();
 }
 
 void RV32IInterpreter::step() {
@@ -24,309 +26,147 @@ void RV32IInterpreter::run() {
     core->pc += 4;
 }
 
+void RV32IInterpreter::initialize_opcode_table() {
+    opcode_table = {
+        {0x17, {{}, &RV32IInterpreter::rv32i_auipc}},
+        {0x37, {{}, &RV32IInterpreter::rv32i_lui}},
+        {0x03, {
+            {{0b000, &RV32IInterpreter::rv32i_lb},
+             {0b010, &RV32IInterpreter::rv32i_lw},
+             {0b100, &RV32IInterpreter::rv32i_lbu}}
+        }},
+        {0x0F, {
+            {{0b001, &RV32IInterpreter::rv32i_fence_i}}
+        }},
+        {0x13, {
+            {{0b000, &RV32IInterpreter::rv32i_addi},
+             {0b001, &RV32IInterpreter::rv32i_slli},
+             {0b011, &RV32IInterpreter::rv32i_sltiu},
+             {0b101, &RV32IInterpreter::rv32i_srli},
+             {0b111, &RV32IInterpreter::rv32i_andi}}
+        }},
+        {0x23, {
+            {{0b000, &RV32IInterpreter::rv32i_sb},
+             {0b010, &RV32IInterpreter::rv32i_sw}}
+        }},
+        {0x2F, {
+            {{0b010, &RV32IInterpreter::handle_amo}}
+        }},
+        {0x33, {
+            {{0b000, &RV32IInterpreter::handle_op}}
+        }},
+        {0x63, {
+            {{0b000, &RV32IInterpreter::rv32i_beq},
+             {0b001, &RV32IInterpreter::rv32i_bne},
+             {0b100, &RV32IInterpreter::rv32i_blt},
+             {0b101, &RV32IInterpreter::rv32i_bge},
+             {0b110, &RV32IInterpreter::rv32i_bltu},
+             {0b111, &RV32IInterpreter::rv32i_bgeu}}
+        }},
+        {0x6F, {{}, &RV32IInterpreter::rv32i_jal}},
+        {0x67, {{}, &RV32IInterpreter::rv32i_jalr}},
+        {0x73, {
+            {{0b001, &RV32IInterpreter::rv32i_csrrw},
+             {0b010, &RV32IInterpreter::rv32i_csrrs},
+             {0b011, &RV32IInterpreter::rv32i_csrrc},
+             {0b101, &RV32IInterpreter::rv32i_csrrsi},
+             {0b111, &RV32IInterpreter::rv32i_csrrwi}}
+        }}
+    };
+}
+
 void RV32IInterpreter::execute_opcode(std::uint32_t opcode) {
-    std::uint8_t opcode_rv32 = 0;
-    std::uint16_t opcode_ = 0;
-    std::uint16_t opcode_rv16 = 0;
-    std::uint8_t funct3 = 0;
-    std::uint32_t funct7 = 0;
+    std::uint8_t opcode_rv32 = opcode & 0x7F;
+    std::uint8_t funct3 = (opcode >> 12) & 0x7;
 
-    // Check for RV16
-    if ((opcode & 0x3) != 0x3) {
-        opcode_ = static_cast<std::uint16_t>(opcode);
-        opcode_rv16 = (opcode_ >> 0) & 0x3;
-        funct3 = (opcode_rv16 >> 13) & 0x7;
+    auto opcode_it = opcode_table.find(opcode_rv32);
+    if (opcode_it != opcode_table.end()) {
+        if (opcode_it->second.single_handler) {
+            (this->*(opcode_it->second.single_handler))(opcode);
+            return;
+        } else {
+            auto funct3_it = opcode_it->second.funct3_map.find(funct3);
+            if (funct3_it != opcode_it->second.funct3_map.end()) {
+                (this->*(funct3_it->second))(opcode);
+                return;
+            }
+        }
+    }
 
-        switch (opcode_rv16) {
-            case 1:
-                switch (funct3) {
-                    case 0:
-                        if (core->has_compressed)
-                        {
-                            rv32i_caddi(opcode_rv16);
-                        }
-                        else
-                        {
-                            no_ext("C");
-                        }
-                        break;
+    unknown_rv32_opcode(opcode);
+}
 
-                    default:
-                        std::ostringstream logMessage;
-                        logMessage << "Unimplemented RV16 Opcode: 0x" << format("{:04X}", opcode_rv16) << ", funct3: 0b" << format("{:04b}", funct3);
+void RV32IInterpreter::handle_amo(std::uint32_t opcode) {
+    std::uint8_t funct7 = (opcode >> 25) & 0x7F;
+    switch (opcode >> 27) {
+        case 0b0000000:
+            rv32i_amoadd_w(opcode);
+            break;
+        case 0b0001000:
+            rv32i_amoor_w(opcode);
+            break;
+        default:
+            unknown_amo_opcode(0b010, funct7);
+            break;
+    }
+}
 
-                        Logger::error(logMessage.str());
-
-                        Risky::exit(1, Risky::Subsystem::Core);
-                        break;
+void RV32IInterpreter::handle_op(std::uint32_t opcode) {
+    std::uint8_t funct3 = (opcode >> 12) & 0x7;
+    std::uint8_t funct7 = (opcode >> 25) & 0x7F;
+    if ((funct7 & (1 << 0)) == 0) {
+        switch (funct3) {
+            case 0b000:
+                if (funct7 == 0x20) {
+                    rv32i_sub(opcode);
+                } else if (funct7 == 0x00) {
+                    rv32i_add(opcode);
                 }
                 break;
-
+            case 0b001:
+                rv32i_sll(opcode);
+                break;
+            case 0b011:
+                rv32i_sltu(opcode);
+                break;
+            case 0b100:
+                rv32i_xor(opcode);
+                break;
+            case 0b110:
+                rv32i_or(opcode);
+                break;
+            case 0b111:
+                rv32i_and(opcode);
+                break;
             default:
-                unknown_rv16_opcode(opcode_rv16);
+                unknown_op_opcode(funct3, funct7);
                 break;
         }
-        return;
-    }
-    else
-    {
-        // RV32
-        funct3 = (opcode >> 12) & 0x7;
-        funct7 = (opcode >> 25) & 0x7F;
-        opcode_rv32 = opcode & 0x7F;
-
-        switch (opcode_rv32) {
-
-            case AUIPC:
-                rv32i_auipc(opcode);
-                break;
-
-            case LUI:
-                rv32i_lui(opcode);
-                break;
-
-	        case LOAD:
-		        switch (funct3) {
-                    case 0b000:
-                        rv32i_lb(opcode);
-                        break;
-			        case 0b010:
-				        rv32i_lw(opcode);
-				        break;
-			        case 0b100:
-				        rv32i_lbu(opcode);
-				        break;
-			        default:
-				        unknown_load_opcode(funct3);
-				        break;
-		        }
-		        break;
-
-	        case MISCMEM:
-                switch (funct3) {
-                    case 0b001:
-                        if (core->has_zifencei) {
-                            rv32i_fence_i(opcode);
-                        } else {
-                            no_ext("Zifencei");
-                        }
-                        break;
-                    default:
-                        unknown_miscmem_opcode(funct3);
-                        break;
+    } else {
+        switch (funct3) {
+            case 0b000:
+                if (core->has_m) {
+                    rv32i_mul(opcode);
+                } else {
+                    no_ext("M");
                 }
                 break;
-
-            case OPIMM:
-                switch (funct3) {
-                    case 0b000:
-                        rv32i_addi(opcode);
-                        break;
-                    case 0b001:
-                        rv32i_slli(opcode);
-                        break;
-                    case 0b011:
-                        rv32i_sltiu(opcode);
-                        break;
-                    case 0b101:
-                        if (funct7 & (1 << 5)) {
-                            // SRAI
-                        } else {
-                            rv32i_srli(opcode);
-                        }
-	                case 0b111:
-		                rv32i_andi(opcode);
-		                break;
-                    default:
-                        unknown_immediate_opcode(funct3);
-                        break;
+            case 0b011:
+                if (core->has_m) {
+                    rv32i_mulhu(opcode);
+                } else {
+                    no_ext("M");
                 }
                 break;
-
-            case STORE:
-                switch (funct3) {
-	                case 0b000:
-		                rv32i_sb(opcode);
-		                break;
-                    case 0b010:
-                        rv32i_sw(opcode);
-                        break;
-                    default:
-                        unknown_store_opcode(funct3);
-                        break;
+            case 0b100:
+                if (core->has_m) {
+                    rv32i_div(opcode);
+                } else {
+                    no_ext("M");
                 }
                 break;
-
-            case AMO:
-                switch (funct3) {
-                    case 0b010:
-                        switch (opcode >> 27) {
-                            case 0b0000000:
-                                rv32i_amoadd_w(opcode);
-                                break;
-                            case 0b0001000:
-                                rv32i_amoor_w(opcode);
-                                break;
-                            default:
-                                unknown_amo_opcode(funct3, funct7);
-                                break;
-                        }
-                        break;
-                    default:
-                        unknown_amo_opcode(funct3, funct7);
-                        break;
-                }
-                break;
-
-            case OP:
-                if ((funct7 & (1 << 0)) == 0) {
-                    switch (funct3) {
-                        case 0b000:
-                        {
-                            if (funct7 == 0x20) {
-                                rv32i_sub(opcode);
-                            } else if (funct7 == 0x00) {
-                                rv32i_add(opcode);
-                            }
-                        }
-                        break;
-
-                        case 0b001:
-                            rv32i_sll(opcode);
-                            break;
-
-                        case 0b011:
-                            rv32i_sltu(opcode);
-                            break;
-
-                        case 0b100:
-                            rv32i_xor(opcode);
-                            break;
-
-                        case 0b110:
-                            rv32i_or(opcode);
-                            break;
-
-                        case 0b111:
-                            rv32i_and(opcode);
-                            break;
-
-                        default:
-                            unknown_op_opcode(funct3, funct7);
-                            break;
-                    }
-                }
-                else
-                {
-                    switch (funct3) {
-                        case 0b000:
-                            if (core->has_m) {
-                                rv32i_mul(opcode);
-                            } else {
-                                no_ext("M");
-                            }
-                            break;
-
-                        case 0b011:
-                            if (core->has_m) {
-                                rv32i_mulhu(opcode);
-                            } else {
-                                no_ext("M");
-                            }
-                            break;
-
-                        case 0b100:
-                            if (core->has_m) {
-                                rv32i_div(opcode);
-                            } else {
-                                no_ext("M");
-                            }
-                            break;
-                        default:
-                            unknown_op_opcode(funct3, funct7);
-                            break;
-                    }
-                }
-                break;
-
-            case BRANCH:
-                switch (funct3) {
-					case 0b000:
-		                rv32i_beq(opcode);
-		                break;
-
-	                case 0b001:
-						rv32i_bne(opcode);
-						break;
-
-                    case 0b100:
-                        rv32i_blt(opcode);
-                        break;
-
-                    case 0b101:
-                        rv32i_bge(opcode);
-                        break;
-
-                    case 0b110:
-                        rv32i_bltu(opcode);
-                        break;
-
-					case 0b111:
-		                rv32i_bgeu(opcode);
-		                break;
-
-                    default:
-                        unknown_branch_opcode(funct3);
-                        break;
-                }
-                break;
-
-            case JAL:
-                rv32i_jal(opcode);
-                break;
-
-            case JALR:
-                rv32i_jalr(opcode);
-                break;
-
-            case SYSTEM:
-                if (core->has_zicsr)
-                {
-                    switch (funct3) {
-                        case 0b001:
-                            rv32i_csrrw(opcode);
-                            break;
-
-                        case 0b010:
-                            rv32i_csrrs(opcode);
-                            break;
-
-                        case 0b011:
-                            rv32i_csrrc(opcode);
-                            break;
-
-                        case 0b101:
-                            rv32i_csrrsi(opcode);
-                            break;
-
-	                    case 0b111:
-		                    rv32i_csrrwi(opcode);
-		                    break;
-
-                        default:
-                            unknown_zicsr_opcode(funct3);
-                            break;
-                    }
-                }
-                else
-                {
-                    no_ext("Zicsr");
-                }
-
-                break;
-
             default:
-                unknown_rv32_opcode(opcode);
+                unknown_op_opcode(funct3, funct7);
                 break;
         }
     }
