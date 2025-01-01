@@ -115,6 +115,7 @@ void RV32IJIT::execute_opcode(std::uint32_t opcode) {
 CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instruction) {
     uint32_t current_pc = start_pc;
     uint32_t end_pc = start_pc; // Initialize end_pc to start_pc
+    bool is_branch = false;
     
     // Create new module for this block
     auto new_module = std::make_unique<llvm::Module>(
@@ -139,7 +140,9 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
         uint32_t opcode = core->fetch_opcode(current_pc);
         
         // Generate IR for opcode
-        auto [is_branch, current_pc_, error] = generate_ir_for_opcode(opcode, current_pc);
+        auto [branch, current_pc_, error] = generate_ir_for_opcode(opcode, current_pc);
+
+        is_branch = branch;
 
         if (error) {
             Logger::error("Error generating IR for opcode");
@@ -153,8 +156,6 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
         }
 
         current_pc = current_pc_;
-
-        sleep(1);
     }
 
     builder->CreateRetVoid();
@@ -185,7 +186,7 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
     block->end_pc = end_pc;
     block->code_ptr = (void*)exec_fn;
     block->last_used = execution_count;
-    block->contains_branch = false;
+    block->contains_branch = is_branch;
     block->llvm_ir = str;
 
     return block;
@@ -234,6 +235,15 @@ void RV32IJIT::unknown_rv32_opcode(std::uint32_t opcode) {
     Risky::exit(1, Risky::Subsystem::Core);
 }
 
+void RV32IJIT::unknown_branch_opcode(std::uint8_t funct3) {
+	std::ostringstream logMessage;
+	logMessage << "Unimplemented LLVM IR BRANCH opcode: 0b" << format("{:08b}", funct3);
+
+	Logger::error(logMessage.str());
+
+	Risky::exit(1, Risky::Subsystem::Core);
+}
+
 void RV32IJIT::unknown_zicsr_opcode(std::uint8_t funct3) {
 	std::ostringstream logMessage;
 	logMessage << "Unimplemented LLVM IR Zicsr opcode: 0b" << format("{:08b}", funct3);
@@ -263,13 +273,7 @@ std::tuple<bool, uint32_t, bool> RV32IJIT::generate_ir_for_opcode(uint32_t opcod
             case 1:
                 switch (funct3) {
                     default:
-                        std::ostringstream logMessage;
-                        logMessage << "Unimplemented LLVM IR RV16 Opcode: 0x" << format("{:04X}", opcode_rv16) << ", funct3: 0b" << format("{:04b}", funct3);
-
-                        Logger::error(logMessage.str());
-
-                        Risky::exit(1, Risky::Subsystem::Core);
-                        
+                        unknown_rv16_opcode(opcode_rv16);
                         error = true;
                         break;
                 }
@@ -289,6 +293,19 @@ std::tuple<bool, uint32_t, bool> RV32IJIT::generate_ir_for_opcode(uint32_t opcod
         opcode_rv32 = opcode & 0x7F;
 
         switch (opcode_rv32) {
+            case BRANCH:
+                switch (funct3) {
+	                case 0b001:
+                        is_branch = true;
+						rv32i_bne(opcode, current_pc, core);
+						break;
+
+                    default:
+                        unknown_branch_opcode(funct3);
+                        break;
+                }
+                break;
+
             case SYSTEM:
                 if (core->has_zicsr)
                 {
@@ -324,42 +341,65 @@ std::tuple<bool, uint32_t, bool> RV32IJIT::generate_ir_for_opcode(uint32_t opcod
 void RV32IJIT::rv32i_csrrs(std::uint32_t opcode, uint32_t& current_pc, RV32I* core) {
     uint8_t rd = (opcode >> 7) & 0x1F;
     uint8_t rs1 = (opcode >> 15) & 0x1F;
-    uint16_t csr = (opcode >> 20) & 0xFFF;
-
-    // Load the value from the CSR register
-    llvm::Value *csr_val = builder->getInt32(core->csr_read(csr));
+    uint8_t csr = (opcode >> 20) & 0xFFF;
 
     // Get the base pointer for the registers array
     llvm::Value *registers_base_ptr = builder->CreateIntToPtr(
         builder->getInt64(reinterpret_cast<std::uintptr_t>(core->registers)),
         llvm::PointerType::getUnqual(builder->getInt32Ty()));
 
-    // Load the value from the source register
+    // Load the values from the source registers
     llvm::Value *rs1_ptr = builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(rs1));
     llvm::Value *rs1_val = builder->CreateLoad(builder->getInt32Ty(), rs1_ptr);
 
-    // Perform the bitwise OR operation
-    llvm::Value *result = builder->CreateOr(csr_val, rs1_val);
+    // Load the value from the CSR
+    llvm::Value *csr_ptr = builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(csr));
+    llvm::Value *csr_val = builder->CreateLoad(builder->getInt32Ty(), csr_ptr);
+
+    // Perform the operation
+    llvm::Value *result = builder->CreateOr(rs1_val, csr_val);
 
     // Store the result in the destination register
     llvm::Value *rd_ptr = builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(rd));
     builder->CreateStore(result, rd_ptr);
 
-    // Update the CSR register if rs1 is not zero
-    llvm::Value *rs1_is_not_zero = builder->CreateICmpNE(rs1_val, builder->getInt32(0));
-    llvm::BasicBlock *update_csr_block = llvm::BasicBlock::Create(*context, "update_csr", builder->GetInsertBlock()->getParent());
-    llvm::BasicBlock *continue_block = llvm::BasicBlock::Create(*context, "continue", builder->GetInsertBlock()->getParent());
-    builder->CreateCondBr(rs1_is_not_zero, update_csr_block, continue_block);
+    current_pc += 4;
+}
 
-    builder->SetInsertPoint(update_csr_block);
-    // Ensure that csr_write is called correctly
-    llvm::FunctionType *csr_write_type = llvm::FunctionType::get(builder->getVoidTy(), {builder->getInt32Ty(), builder->getInt32Ty()}, false);
-    llvm::FunctionCallee csr_write_func = builder->GetInsertBlock()->getModule()->getOrInsertFunction("csr_write", csr_write_type);
-    
-    builder->CreateCall(csr_write_func, {builder->getInt32(csr), result});
+void RV32IJIT::rv32i_bne(std::uint32_t opcode, uint32_t& current_pc, RV32I* core) {
+    uint8_t rs1 = (opcode >> 15) & 0x1F;
+    uint8_t rs2 = (opcode >> 20) & 0x1F;
+    int32_t imm = ((opcode >> 7) & 0x1E) | ((opcode >> 20) & 0x7E0) | ((opcode << 4) & 0x800) | ((opcode >> 19) & 0x1000);
+    imm = (imm << 19) >> 19; // Sign-extend the immediate
+
+    // Get the base pointer for the registers array
+    llvm::Value *registers_base_ptr = builder->CreateIntToPtr(
+        builder->getInt64(reinterpret_cast<std::uintptr_t>(core->registers)),
+        llvm::PointerType::getUnqual(builder->getInt32Ty()));
+
+    // Load the values from the source registers
+    llvm::Value *rs1_ptr = builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(rs1));
+    llvm::Value *rs1_val = builder->CreateLoad(builder->getInt32Ty(), rs1_ptr);
+
+    llvm::Value *rs2_ptr = builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(rs2));
+    llvm::Value *rs2_val = builder->CreateLoad(builder->getInt32Ty(), rs2_ptr);
+
+    // Compare the values
+    llvm::Value *cond = builder->CreateICmpNE(rs1_val, rs2_val);
+
+    // Create basic blocks for the branch
+    llvm::BasicBlock *branch_block = llvm::BasicBlock::Create(*context, "branch", builder->GetInsertBlock()->getParent());
+    llvm::BasicBlock *continue_block = llvm::BasicBlock::Create(*context, "continue", builder->GetInsertBlock()->getParent());
+
+    // Conditionally branch
+    builder->CreateCondBr(cond, branch_block, continue_block);
+
+    // Branch block
+    builder->SetInsertPoint(branch_block);
+    builder->CreateStore(builder->getInt32(current_pc + imm), builder->CreateGEP(builder->getInt32Ty(), registers_base_ptr, builder->getInt32(32))); // Update PC
     builder->CreateBr(continue_block);
 
+    // Continue block
     builder->SetInsertPoint(continue_block);
-
     current_pc += 4;
 }

@@ -46,7 +46,9 @@ private:
     void no_ext(std::string extension);
     void unknown_rv16_opcode(std::uint16_t opcode);
     void unknown_rv32_opcode(std::uint32_t opcode);
+    void unknown_branch_opcode(std::uint8_t funct3);
     void unknown_zicsr_opcode(std::uint8_t funct3);
 
     void rv32i_csrrs(std::uint32_t opcode, uint32_t& current_pc, RV32I* core);
+    void rv32i_bne(std::uint32_t opcode, uint32_t& current_pc, RV32I* core);
 };
