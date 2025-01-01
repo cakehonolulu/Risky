@@ -44,7 +44,15 @@ RV32IJIT::RV32IJIT(RV32I* core) : core(core) {
     }
 
     Logger::info("JIT initialization successful");
+    initialize_opcode_table();
     ready = true;
+}
+
+void RV32IJIT::initialize_opcode_table() {
+    opcode_table = {
+        {0x63, OpcodeHandlerEntry{{{0b001, &RV32IJIT::rv32i_bne}}, nullptr}},
+        {0x73, OpcodeHandlerEntry{{{0b010, &RV32IJIT::rv32i_csrrs}}, nullptr}}
+    };
 }
 
 RV32IJIT::~RV32IJIT() {
@@ -146,6 +154,7 @@ CompiledBlock* RV32IJIT::compile_block(uint32_t start_pc, bool single_instructio
 
         if (error) {
             Logger::error("Error generating IR for opcode");
+            Risky::exit(1, Risky::Subsystem::Core);
             return nullptr;
         }
 
@@ -207,7 +216,6 @@ void RV32IJIT::evict_oldest_block() {
     block_cache.erase(oldest_pc);
 }
 
-
 void RV32IJIT::no_ext(std::string extension) {
 	std::ostringstream logMessage;
 	logMessage << "FATAL ERROR: Called a " << extension.c_str() << " extension opcode but it's unavailable for this core!";
@@ -257,82 +265,22 @@ std::tuple<bool, uint32_t, bool> RV32IJIT::generate_ir_for_opcode(uint32_t opcod
     bool is_branch = false;
     bool error = false;
 
-    std::uint8_t opcode_rv32 = 0;
-    std::uint16_t opcode_ = 0;
-    std::uint16_t opcode_rv16 = 0;
-    std::uint8_t funct3 = 0;
-    std::uint32_t funct7 = 0;
+    std::uint8_t opcode_rv32 = opcode & 0x7F;
+    std::uint8_t funct3 = (opcode >> 12) & 0x7;
 
-    // Check for RV16
-    if ((opcode & 0x3) != 0x3) {
-        opcode_ = static_cast<std::uint16_t>(opcode);
-        opcode_rv16 = (opcode_ >> 0) & 0x3;
-        funct3 = (opcode_rv16 >> 13) & 0x7;
-
-        switch (opcode_rv16) {
-            case 1:
-                switch (funct3) {
-                    default:
-                        unknown_rv16_opcode(opcode_rv16);
-                        error = true;
-                        break;
-                }
-                break;
-
-            default:
-                unknown_rv16_opcode(opcode_rv16);
-                error = true;
-                break;
+    auto opcode_it = opcode_table.find(opcode_rv32);
+    if (opcode_it != opcode_table.end()) {
+        if (opcode_it->second.single_handler) {
+            (this->*(opcode_it->second.single_handler))(opcode, current_pc, core);
+        } else {
+            auto funct3_it = opcode_it->second.funct3_map.find(funct3);
+            if (funct3_it != opcode_it->second.funct3_map.end()) {
+                (this->*(funct3_it->second))(opcode, current_pc, core);
+            }
         }
     }
-    else
-    {
-        // RV32
-        funct3 = (opcode >> 12) & 0x7;
-        funct7 = (opcode >> 25) & 0x7F;
-        opcode_rv32 = opcode & 0x7F;
-
-        switch (opcode_rv32) {
-            case BRANCH:
-                switch (funct3) {
-	                case 0b001:
-                        is_branch = true;
-						rv32i_bne(opcode, current_pc, core);
-						break;
-
-                    default:
-                        unknown_branch_opcode(funct3);
-                        break;
-                }
-                break;
-
-            case SYSTEM:
-                if (core->has_zicsr)
-                {
-                    switch (funct3) {
-                        case 0b010:
-                            rv32i_csrrs(opcode, current_pc, core);
-                            break;
-
-                        default:
-                            unknown_zicsr_opcode(funct3);
-                            error = true;
-                            break;
-                    }
-                }
-                else
-                {
-                    no_ext("Zicsr");
-                    error = true;
-                }
-
-                break;
-
-            default:
-                unknown_rv32_opcode(opcode);
-                error = true;
-                break;
-        }
+    else {
+        error = true;
     }
 
     return {is_branch, current_pc, error};

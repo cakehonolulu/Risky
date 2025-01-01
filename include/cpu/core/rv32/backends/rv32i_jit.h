@@ -43,6 +43,17 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::ExecutionEngine> executionEngine;
 
+    typedef void (RV32IJIT::*OpcodeHandler)(std::uint32_t, uint32_t&, RV32I*);
+
+    struct OpcodeHandlerEntry {
+        std::unordered_map<std::uint8_t, OpcodeHandler> funct3_map;
+        OpcodeHandler single_handler = nullptr;
+    };
+
+    std::unordered_map<std::uint8_t, OpcodeHandlerEntry> opcode_table;
+
+    void initialize_opcode_table();
+
     void no_ext(std::string extension);
     void unknown_rv16_opcode(std::uint16_t opcode);
     void unknown_rv32_opcode(std::uint32_t opcode);

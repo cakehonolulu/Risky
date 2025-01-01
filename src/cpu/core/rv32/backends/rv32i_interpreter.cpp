@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 RV32IInterpreter::RV32IInterpreter(RV32I* core) : core(core) {
-    ready = true;
     initialize_opcode_table();
+    ready = true;
 }
 
 void RV32IInterpreter::step() {
